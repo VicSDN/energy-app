@@ -1,170 +1,111 @@
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+
 class NotificationService {
   constructor() {
-    this.useOneSignal = true;
-    this.oneSignalService = null;
+    this.messaging = null;
+    this.token = null;
     this.initialized = false;
-    this.fallbackMode = false;
   }
 
   async init() {
-    if (this.initialized) return;
+    if (this.initialized) return true;
 
     try {
-      // Intentar cargar OneSignal
-      const oneSignalService = await import("./oneSignalService.js");
-      this.oneSignalService = oneSignalService.default;
-
-      // Dar tiempo para que OneSignal se inicialice
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const debugInfo = await this.oneSignalService.getDebugInfo();
-
-      if (debugInfo.initialized) {
-        console.log("✅ Usando OneSignal como servicio principal");
-        this.useOneSignal = true;
-        this.fallbackMode = false;
-      } else {
-        console.log("⚠️ OneSignal falló, usando notificaciones nativas");
-        this.useOneSignal = false;
-        this.fallbackMode = true;
-      }
+      // Inicializar Firebase Messaging
+      this.messaging = getMessaging();
+      console.log("✅ Firebase Messaging inicializado correctamente");
+      this.initialized = true;
+      return true;
     } catch (error) {
-      console.log("⚠️ Error cargando OneSignal, usando notificaciones nativas");
-      this.useOneSignal = false;
-      this.fallbackMode = true;
+      console.error("❌ Error inicializando Firebase Messaging:", error);
+      return false;
     }
-
-    this.initialized = true;
   }
 
-  async getNotificationPermission() {
-    await this.init();
-
-    if (this.useOneSignal && this.oneSignalService) {
-      try {
-        return await this.oneSignalService.getNotificationPermission();
-      } catch (error) {
-        console.warn("Error con OneSignal, usando fallback:", error);
-        this.fallbackMode = true;
-      }
-    }
-
-    // Fallback a API nativa
-    if ("Notification" in window) {
-      return Notification.permission;
-    }
-    return "default";
-  }
-
-  async isPushNotificationsEnabled() {
-    await this.init();
-
-    if (this.useOneSignal && this.oneSignalService && !this.fallbackMode) {
-      try {
-        return await this.oneSignalService.isPushNotificationsEnabled();
-      } catch (error) {
-        console.warn("Error con OneSignal, usando fallback:", error);
-        this.fallbackMode = true;
-      }
-    }
-
-    // Fallback: verificar permisos nativos
-    return this.getNotificationPermission().then(
-      (permission) => permission === "granted"
-    );
-  }
-
-  async showNotificationPrompt() {
-    await this.init();
-
-    if (this.useOneSignal && this.oneSignalService && !this.fallbackMode) {
-      try {
-        const result = await this.oneSignalService.showNotificationPrompt();
-        if (result.success || result.alreadySubscribed) {
-          return result;
+  async requestPermission() {
+    try {
+      await this.init();
+      
+      // Solicitar permisos de notificación
+      if ("Notification" in window) {
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+          // Obtener token FCM
+          this.token = await this.getOrGenerateToken();
+          
+          // Configurar manejo de mensajes en primer plano
+          this.setupForegroundMessages();
+          
+          return {
+            success: true,
+            permission: "granted"
+          };
+        } else {
+          return {
+            success: false,
+            permission: permission,
+            userDenied: permission === "denied"
+          };
         }
-        // Si OneSignal falla, intentar fallback
-        console.log("OneSignal prompt falló, intentando fallback nativo");
-      } catch (error) {
-        console.warn("Error con OneSignal prompt, usando fallback:", error);
-      }
-    }
-
-    // Fallback a API nativa
-    return this.showNativeNotificationPrompt();
-  }
-
-  async showNativeNotificationPrompt() {
-    try {
-      if (!("Notification" in window)) {
+      } else {
         return {
           success: false,
-          error: "Notifications not supported in this browser",
-          fallback: true,
+          error: "Las notificaciones no están soportadas en este navegador"
         };
       }
-
-      const currentPermission = Notification.permission;
-
-      if (currentPermission === "granted") {
-        // Mostrar notificación de prueba
-        this.showTestNotification();
-        return {
-          success: true,
-          permission: "granted",
-          subscribed: true,
-          fallback: true,
-          native: true,
-        };
-      }
-
-      if (currentPermission === "denied") {
-        return {
-          success: false,
-          permission: "denied",
-          userDenied: true,
-          fallback: true,
-        };
-      }
-
-      // Solicitar permisos
-      const permission = await Notification.requestPermission();
-
-      if (permission === "granted") {
-        // Mostrar notificación de bienvenida
-        this.showTestNotification();
-        return {
-          success: true,
-          permission: "granted",
-          subscribed: true,
-          fallback: true,
-          native: true,
-          justGranted: true,
-        };
-      }
-
-      return {
-        success: false,
-        permission,
-        userDenied: permission === "denied",
-        fallback: true,
-      };
     } catch (error) {
+      console.error('Error al solicitar permisos:', error);
       return {
         success: false,
-        error: error.message,
-        fallback: true,
+        error: error.message
       };
     }
   }
 
-  showTestNotification() {
+  async getOrGenerateToken() {
+    try {
+      // VAPID Key obtenida de la consola de Firebase
+      const vapidKey = 'BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU';
+      
+      const currentToken = await getToken(this.messaging, {
+        vapidKey: vapidKey
+      });
+      
+      if (currentToken) {
+        console.log('Token FCM obtenido:', currentToken.substring(0, 10) + '...');
+        return currentToken;
+      } else {
+        console.warn('No se pudo obtener el token FCM');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error al obtener token:', error);
+      return null;
+    }
+  }
+
+  setupForegroundMessages() {
+    if (!this.messaging) return;
+    
+    onMessage(this.messaging, (payload) => {
+      console.log('Mensaje recibido en primer plano:', payload);
+      
+      // Mostrar notificación cuando la app está en primer plano
+      if (payload.notification) {
+        const { title, body } = payload.notification;
+        this.showLocalNotification(title, body);
+      }
+    });
+  }
+
+  showLocalNotification(title, body) {
     if ("Notification" in window && Notification.permission === "granted") {
-      const notification = new Notification("🎉 ¡Notificaciones activadas!", {
-        body: "Ya recibirás notificaciones de eventos especiales",
-        icon: "/img/ColorIcon.jpeg",
-        badge: "/img/ColorIcon.jpeg",
-        tag: "welcome",
+      const notification = new Notification(title, {
+        body,
+        icon: "/img/ModernIcon.svg",
+        badge: "/img/ModernIcon.svg",
+        tag: "energy-club",
         requireInteraction: false,
         silent: false,
       });
@@ -178,60 +119,41 @@ class NotificationService {
     }
   }
 
+  async showWelcomeNotification() {
+    return this.showLocalNotification(
+      "🎉 ¡Notificaciones activadas!",
+      "Ahora recibirás notificaciones sobre eventos y promociones exclusivas."
+    );
+  }
+
+  async getNotificationPermission() {
+    if ("Notification" in window) {
+      return Notification.permission;
+    }
+    return "default";
+  }
+
+  async isPushNotificationsEnabled() {
+    const permission = await this.getNotificationPermission();
+    return permission === "granted" && this.token !== null;
+  }
+
   async getDebugInfo() {
     await this.init();
 
-    const baseInfo = {
+    const permission = await this.getNotificationPermission();
+    const subscribed = await this.isPushNotificationsEnabled();
+    
+    return {
+      initialized: this.initialized,
+      permission,
+      subscribed,
+      token: this.token ? this.token.substring(0, 10) + '...' : null,
       notificationSupported: "Notification" in window,
       serviceWorkerSupported: "serviceWorker" in navigator,
       isSecureContext: window.isSecureContext,
       userAgent: navigator.userAgent,
-      fallbackMode: this.fallbackMode,
-      useOneSignal: this.useOneSignal,
     };
-
-    if (this.useOneSignal && this.oneSignalService) {
-      try {
-        const oneSignalInfo = await this.oneSignalService.getDebugInfo();
-        return {
-          ...baseInfo,
-          oneSignal: oneSignalInfo,
-          initialized: oneSignalInfo.initialized,
-          permission: oneSignalInfo.permission,
-          subscribed: oneSignalInfo.subscribed,
-        };
-      } catch (error) {
-        return {
-          ...baseInfo,
-          oneSignal: { error: error.message },
-          initialized: false,
-          permission: await this.getNotificationPermission(),
-          subscribed: await this.isPushNotificationsEnabled(),
-        };
-      }
-    }
-
-    // Solo información nativa
-    const permission = await this.getNotificationPermission();
-    return {
-      ...baseInfo,
-      initialized: true,
-      permission,
-      subscribed: permission === "granted",
-      nativeOnly: true,
-    };
-  }
-
-  onSubscriptionChange(callback) {
-    if (this.useOneSignal && this.oneSignalService && !this.fallbackMode) {
-      this.oneSignalService.onSubscriptionChange(callback);
-    } else {
-      // Para modo fallback, podríamos escuchar cambios de permisos
-      // pero la API nativa no tiene eventos específicos para esto
-      console.log(
-        "Subscription change listener not available in fallback mode"
-      );
-    }
   }
 }
 

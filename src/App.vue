@@ -1,21 +1,24 @@
 <template>
   <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
   <router-view v-if="!showInitialCheck || !isMobile || isPwaInstalled" />
+  <NotificationTest />
 </template>
 
 <script>
-import InitialCheck from "./components/InitialCheck.vue";
+import InitialCheck from './components/InitialCheck.vue';
+import NotificationTest from './components/NotificationTest.vue';
 
 export default {
-  name: "App",
+  name: 'App',
   components: {
     InitialCheck,
+    NotificationTest
   },
   data() {
     return {
       showInitialCheck: true,
       isMobile: false,
-      isPwaInstalled: false,
+      isPwaInstalled: false
     };
   },
   methods: {
@@ -24,34 +27,26 @@ export default {
     },
     checkDeviceAndInstallation() {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      this.isMobile =
-        /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-          userAgent.toLowerCase()
-        );
-
-      this.isPwaInstalled =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone;
-
+      this.isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+      
+      this.isPwaInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone;
+                          
       if (!this.isMobile || this.isPwaInstalled) {
-        const initialCheckComplete = localStorage.getItem(
-          "initialCheckComplete"
-        );
-        if (initialCheckComplete === "true") {
+        const initialCheckComplete = localStorage.getItem('initialCheckComplete');
+        if (initialCheckComplete === 'true') {
           this.showInitialCheck = false;
         }
       }
-
-      window
-        .matchMedia("(display-mode: standalone)")
-        .addEventListener("change", (e) => {
-          this.isPwaInstalled = e.matches;
-        });
-    },
+      
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        this.isPwaInstalled = e.matches;
+      });
+    }
   },
   mounted() {
     this.checkDeviceAndInstallation();
-  },
+  }
 };
 </script>
 
