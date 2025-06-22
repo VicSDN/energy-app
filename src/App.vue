@@ -1,12 +1,6 @@
 <template>
   <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
-  <router-view
-    v-if="
-      !showInitialCheck && // Only show if passed initial check AND
-      (!isMobile || // is desktop OR
-        isPwaInstalled) // is installed on mobile
-    "
-  />
+  <router-view v-if="!showInitialCheck" />
 </template>
 
 <script>
@@ -20,63 +14,19 @@ export default {
   data() {
     return {
       showInitialCheck: true,
-      isMobile: false,
-      isPwaInstalled: false,
     };
   },
   methods: {
     onCheckComplete() {
-      // Only allow continuing if:
-      // 1. Is desktop, OR
-      // 2. Is mobile AND is installed
-      if (!this.isMobile || (this.isMobile && this.isPwaInstalled)) {
-        this.showInitialCheck = false;
-      }
-    },
-    checkDeviceAndInstallation() {
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      this.isMobile =
-        /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-          userAgent.toLowerCase()
-        );
-
-      // Verify if it's installed as PWA
-      this.isPwaInstalled =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone;
-
-      // In desktop, allow access if already completed the check
-      if (!this.isMobile) {
-        const initialCheckComplete = localStorage.getItem(
-          "initialCheckComplete"
-        );
-        if (initialCheckComplete === "true") {
-          this.showInitialCheck = false;
-        }
-        return;
-      }
-
-      // In mobile, always show check initial if not installed
-      if (!this.isPwaInstalled) {
-        this.showInitialCheck = true;
-        localStorage.removeItem("initialCheckComplete"); // Force verification
-      }
+      this.showInitialCheck = false;
     },
   },
   mounted() {
-    this.checkDeviceAndInstallation();
-
-    // Listen for changes in display mode
-    window
-      .matchMedia("(display-mode: standalone)")
-      .addEventListener("change", (e) => {
-        this.isPwaInstalled = e.matches;
-        if (!e.matches && this.isMobile) {
-          // If uninstalled on mobile, force showing initial check
-          this.showInitialCheck = true;
-          localStorage.removeItem("initialCheckComplete");
-        }
-      });
+    // Verificar si ya completó el setup inicial
+    const initialCheckComplete = localStorage.getItem('initialCheckComplete');
+    if (initialCheckComplete === 'true') {
+      this.showInitialCheck = false;
+    }
   },
 };
 </script>
