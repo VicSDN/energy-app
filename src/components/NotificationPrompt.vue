@@ -6,79 +6,89 @@
       </div>
       <div class="notification-content">
         <h3>Mantente informado</h3>
-        <p>Recibe notificaciones sobre eventos, promociones y ofertas exclusivas de Energy Club.</p>
+        <p>
+          Recibe notificaciones sobre eventos, promociones y ofertas exclusivas
+          de Energy Club.
+        </p>
       </div>
       <div class="notification-actions">
-        <button @click="requestPermission" class="allow-btn">
-          Permitir
-        </button>
-        <button @click="dismissPrompt" class="dismiss-btn">
-          Ahora no
-        </button>
+        <button @click="requestPermission" class="allow-btn">Permitir</button>
+        <button @click="dismissPrompt" class="dismiss-btn">Ahora no</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { requestNotificationPermission, areNotificationsEnabled } from '../services/notificationHelper';
+import {
+  requestNotificationPermission,
+  areNotificationsEnabled,
+} from "../services/notificationHelper";
 
 export default {
-  name: 'NotificationPrompt',
+  name: "NotificationPrompt",
   data() {
     return {
       showPrompt: false,
-      hasRequested: false
+      hasRequested: false,
     };
   },
   methods: {
     async requestPermission() {
       this.showPrompt = false;
       this.hasRequested = true;
-      localStorage.setItem('notificationRequested', 'true');
-      
+      localStorage.setItem("notificationRequested", "true");
+
       const result = await requestNotificationPermission();
       if (result.success) {
-        console.log('Permisos de notificación concedidos');
+        console.log("Permisos de notificación concedidos");
       } else {
-        console.log('Permisos de notificación denegados o error:', result.error);
+        console.log(
+          "Permisos de notificación denegados o error:",
+          result.error
+        );
       }
     },
     dismissPrompt() {
       this.showPrompt = false;
-      
+
       // Guardar timestamp para no volver a mostrar en 3 días
       const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-      localStorage.setItem('notificationPromptDismissed', Date.now() + threeDaysMs);
+      localStorage.setItem(
+        "notificationPromptDismissed",
+        Date.now() + threeDaysMs
+      );
     },
     async checkNotificationStatus() {
       // No mostrar si ya se ha solicitado antes
-      if (localStorage.getItem('notificationRequested') === 'true') {
+      if (localStorage.getItem("notificationRequested") === "true") {
         return;
       }
-      
+
       // No mostrar si se ha descartado recientemente
-      const dismissedUntil = localStorage.getItem('notificationPromptDismissed');
+      const dismissedUntil = localStorage.getItem(
+        "notificationPromptDismissed"
+      );
       if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {
         return;
       }
-      
+
       // Comprobar si ya tiene permisos
       const enabled = await areNotificationsEnabled();
       if (enabled) {
         return;
       }
-      
+
       // Mostrar después de 5 segundos
       setTimeout(() => {
         this.showPrompt = true;
       }, 5000);
-    }
+    },
   },
   mounted() {
     // Verificar estado de notificaciones cuando el componente se monte
     this.checkNotificationStatus();
-  }
+  },
 };
 </script>
 
@@ -129,13 +139,16 @@ export default {
 }
 
 @keyframes ring {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0);
   }
-  5%, 15% {
+  5%,
+  15% {
     transform: rotate(15deg);
   }
-  10%, 20% {
+  10%,
+  20% {
     transform: rotate(-15deg);
   }
   25% {
@@ -162,7 +175,8 @@ export default {
   margin-top: 10px;
 }
 
-.allow-btn, .dismiss-btn {
+.allow-btn,
+.dismiss-btn {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -199,7 +213,7 @@ export default {
     right: 10px;
     left: 10px;
   }
-  
+
   .notification-card {
     width: 100%;
   }

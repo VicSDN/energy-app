@@ -1,52 +1,83 @@
 <template>
   <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
-  <router-view v-if="!showInitialCheck || !isMobile || isPwaInstalled" />
-  <NotificationTest />
+  <router-view
+    v-if="
+      !showInitialCheck && // Only show if passed initial check AND
+      (!isMobile || // is desktop OR
+        isPwaInstalled) // is installed on mobile
+    "
+  />
 </template>
 
 <script>
-import InitialCheck from './components/InitialCheck.vue';
-import NotificationTest from './components/NotificationTest.vue';
+import InitialCheck from "./components/InitialCheck.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
     InitialCheck,
-    NotificationTest
   },
   data() {
     return {
       showInitialCheck: true,
       isMobile: false,
-      isPwaInstalled: false
+      isPwaInstalled: false,
     };
   },
   methods: {
     onCheckComplete() {
-      this.showInitialCheck = false;
+      // Only allow continuing if:
+      // 1. Is desktop, OR
+      // 2. Is mobile AND is installed
+      if (!this.isMobile || (this.isMobile && this.isPwaInstalled)) {
+        this.showInitialCheck = false;
+      }
     },
     checkDeviceAndInstallation() {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      this.isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-      
-      this.isPwaInstalled = window.matchMedia('(display-mode: standalone)').matches || 
-                          window.navigator.standalone;
-                          
-      if (!this.isMobile || this.isPwaInstalled) {
-        const initialCheckComplete = localStorage.getItem('initialCheckComplete');
-        if (initialCheckComplete === 'true') {
+      this.isMobile =
+        /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent.toLowerCase()
+        );
+
+      // Verify if it's installed as PWA
+      this.isPwaInstalled =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone;
+
+      // In desktop, allow access if already completed the check
+      if (!this.isMobile) {
+        const initialCheckComplete = localStorage.getItem(
+          "initialCheckComplete"
+        );
+        if (initialCheckComplete === "true") {
           this.showInitialCheck = false;
         }
+        return;
       }
-      
-      window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
-        this.isPwaInstalled = e.matches;
-      });
-    }
+
+      // In mobile, always show check initial if not installed
+      if (!this.isPwaInstalled) {
+        this.showInitialCheck = true;
+        localStorage.removeItem("initialCheckComplete"); // Force verification
+      }
+    },
   },
   mounted() {
     this.checkDeviceAndInstallation();
-  }
+
+    // Listen for changes in display mode
+    window
+      .matchMedia("(display-mode: standalone)")
+      .addEventListener("change", (e) => {
+        this.isPwaInstalled = e.matches;
+        if (!e.matches && this.isMobile) {
+          // If uninstalled on mobile, force showing initial check
+          this.showInitialCheck = true;
+          localStorage.removeItem("initialCheckComplete");
+        }
+      });
+  },
 };
 </script>
 

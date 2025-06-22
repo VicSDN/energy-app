@@ -3,26 +3,30 @@
     <h3>Enviar Notificación de Prueba</h3>
     <div class="form-group">
       <label for="title">Título:</label>
-      <input 
-        type="text" 
-        id="title" 
-        v-model="notificationTitle" 
-        placeholder="Título de la notificación" 
+      <input
+        type="text"
+        id="title"
+        v-model="notificationTitle"
+        placeholder="Título de la notificación"
         class="form-input"
-      >
+      />
     </div>
     <div class="form-group">
       <label for="message">Mensaje:</label>
-      <textarea 
-        id="message" 
-        v-model="notificationMessage" 
-        placeholder="Mensaje de la notificación" 
+      <textarea
+        id="message"
+        v-model="notificationMessage"
+        placeholder="Mensaje de la notificación"
         class="form-input"
       ></textarea>
     </div>
     <div class="button-group">
-      <button @click="sendTestNotification" class="test-btn" :disabled="sending">
-        {{ sending ? 'Enviando...' : 'Enviar Notificación' }}
+      <button
+        @click="sendTestNotification"
+        class="test-btn"
+        :disabled="sending"
+      >
+        {{ sending ? "Enviando..." : "Enviar Notificación" }}
       </button>
       <div class="status-message" v-if="statusMessage">{{ statusMessage }}</div>
     </div>
@@ -31,24 +35,24 @@
 
 <script>
 export default {
-  name: 'TestNotification',
+  name: "TestNotification",
   data() {
     return {
-      notificationTitle: 'Prueba de Notificación',
-      notificationMessage: '¡Esta es una notificación de prueba!',
+      notificationTitle: "Prueba de Notificación",
+      notificationMessage: "¡Esta es una notificación de prueba!",
       sending: false,
-      statusMessage: ''
+      statusMessage: "",
     };
   },
   methods: {
     async sendTestNotification() {
       if (!this.notificationTitle || !this.notificationMessage) {
-        this.statusMessage = 'Por favor, completa todos los campos';
+        this.statusMessage = "Por favor, completa todos los campos";
         return;
       }
 
       this.sending = true;
-      this.statusMessage = '';
+      this.statusMessage = "";
 
       try {
         // Esta parte necesita que se implemente una función de backend
@@ -59,18 +63,20 @@ export default {
         if (window.OneSignal) {
           // Opción 1: Usar OneSignal para mostrar una notificación local
           await window.OneSignal.Notifications.requestPermission();
-          
+
           // Puedes elegir entre enviar una notificación local o a través de la API REST
           // Descomentar la línea que prefieras usar:
-          
+
           // await this.sendNotificationViaClientAPI(); // Notificación local
           await this.sendNotificationViaAPI(); // Notificación usando la API REST
         } else {
-          throw new Error('OneSignal no está disponible');
+          throw new Error("OneSignal no está disponible");
         }
       } catch (error) {
-        console.error('Error al enviar notificación:', error);
-        this.statusMessage = `Error: ${error.message || 'No se pudo enviar la notificación'}`;
+        console.error("Error al enviar notificación:", error);
+        this.statusMessage = `Error: ${
+          error.message || "No se pudo enviar la notificación"
+        }`;
       } finally {
         this.sending = false;
       }
@@ -82,72 +88,79 @@ export default {
 
       try {
         // Verificar si estamos suscritos
-        const isPushSupported = await window.OneSignal.Notifications.isPushSupported();
+        const isPushSupported =
+          await window.OneSignal.Notifications.isPushSupported();
         if (!isPushSupported) {
-          throw new Error('Las notificaciones push no están soportadas en este navegador');
+          throw new Error(
+            "Las notificaciones push no están soportadas en este navegador"
+          );
         }
 
         const permission = await window.OneSignal.Notifications.permission;
         if (!permission) {
-          const result = await window.OneSignal.Notifications.requestPermission();
+          const result =
+            await window.OneSignal.Notifications.requestPermission();
           if (!result) {
-            throw new Error('Permiso de notificaciones denegado');
+            throw new Error("Permiso de notificaciones denegado");
           }
         }
 
         // Para testing local, podemos usar la función slidedown
         window.OneSignal.Slidedown.promptPush({
           force: true,
-          forceSlidedownOverNative: true
+          forceSlidedownOverNative: true,
         });
 
-        this.statusMessage = '¡Notificación mostrada correctamente!';
+        this.statusMessage = "¡Notificación mostrada correctamente!";
       } catch (error) {
-        console.error('Error mostrando notificación:', error);
+        console.error("Error mostrando notificación:", error);
         throw error;
       }
     },
 
     async sendNotificationViaAPI() {
-      const appId = '04bdf268-6549-4aff-85e0-4d5c973069d5';
-      const restApiKey = 'o3uuaq5tpub6fjp3zqhjkrazw';
-      
+      const appId = "04bdf268-6549-4aff-85e0-4d5c973069d5";
+      const restApiKey = "o3uuaq5tpub6fjp3zqhjkrazw";
+
       const data = {
         app_id: appId,
-        included_segments: ['Total Subscribed Users'],
+        included_segments: ["Total Subscribed Users"],
         headings: {
-          'en': this.notificationTitle,
-          'es': this.notificationTitle
+          en: this.notificationTitle,
+          es: this.notificationTitle,
         },
         contents: {
-          'en': this.notificationMessage,
-          'es': this.notificationMessage
-        }
+          en: this.notificationMessage,
+          es: this.notificationMessage,
+        },
       };
 
       try {
-        const response = await fetch('https://onesignal.com/api/v1/notifications', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${restApiKey}`
-          },
-          body: JSON.stringify(data)
-        });
+        const response = await fetch(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${restApiKey}`,
+            },
+            body: JSON.stringify(data),
+          }
+        );
 
         const result = await response.json();
         if (result.errors) {
           throw new Error(result.errors[0]);
         }
-        
-        this.statusMessage = '¡Notificación enviada correctamente!';
+
+        this.statusMessage = "¡Notificación enviada correctamente!";
         return result;
       } catch (error) {
-        console.error('Error al enviar notificación:', error);
+        console.error("Error al enviar notificación:", error);
         throw error;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 

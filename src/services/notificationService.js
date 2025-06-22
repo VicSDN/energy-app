@@ -1,97 +1,126 @@
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
+/**
+ * Service to handle Firebase Cloud Messaging (FCM) for notifications
+ * with cross-platform support
+ */
 class NotificationService {
   constructor() {
     this.messaging = null;
     this.token = null;
     this.initialized = false;
+    this.vapidKey =
+      "BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU";
+    this.isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    this.isAndroid = /Android/.test(navigator.userAgent);
   }
 
+  /**
+   * Check if notifications are supported by this browser/device
+   * @returns {boolean} True if notifications are supported
+   */
+  isSupported() {
+    return (
+      "Notification" in window &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window
+    );
+  }
+
+  /**
+   * Initialize Firebase Messaging with platform-specific handling
+   * @returns {Promise<boolean>} True if initialization was successful, false otherwise
+   */
   async init() {
     if (this.initialized) return true;
 
     try {
-      // Inicializar Firebase Messaging
+      if (!this.isSupported()) {
+        throw new Error(
+          "Las notificaciones no son soportadas en este dispositivo/navegador"
+        );
+      }
+
+      // En iOS, solo usar notificaciones web básicas
+      if (this.isIOS) {
+        this.initialized = true;
+        return true;
+      }
+
       this.messaging = getMessaging();
-      console.log("✅ Firebase Messaging inicializado correctamente");
       this.initialized = true;
       return true;
     } catch (error) {
-      console.error("❌ Error inicializando Firebase Messaging:", error);
+      console.error("Error inicializando notificaciones:", error);
       return false;
     }
   }
 
+  /**
+   * Request notification permission from the user
+   * @returns {Promise<Object>} Result of the permission request
+   */
   async requestPermission() {
     try {
       await this.init();
-      
-      // Solicitar permisos de notificación
-      if ("Notification" in window) {
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-          // Obtener token FCM
-          this.token = await this.getOrGenerateToken();
-          
-          // Configurar manejo de mensajes en primer plano
-          this.setupForegroundMessages();
-          
-          return {
-            success: true,
-            permission: "granted"
-          };
-        } else {
-          return {
-            success: false,
-            permission: permission,
-            userDenied: permission === "denied"
-          };
-        }
-      } else {
+
+      if (!("Notification" in window)) {
         return {
           success: false,
-          error: "Las notificaciones no están soportadas en este navegador"
+          error: "Las notificaciones no están soportadas en este navegador",
         };
       }
-    } catch (error) {
-      console.error('Error al solicitar permisos:', error);
+
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        this.token = await this.getOrGenerateToken();
+        this.setupForegroundMessages();
+        return {
+          success: true,
+          permission: "granted",
+        };
+      }
+
       return {
         success: false,
-        error: error.message
+        permission,
+        userDenied: permission === "denied",
       };
+    } catch (error) {
+      console.error("Error al solicitar permisos:", error);
+      return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Get the FCM token or generate a new one with platform-specific handling
+   * @returns {Promise<string|null>} The FCM token or null if an error occurred
+   */
   async getOrGenerateToken() {
+    // Para iOS, usar un token simulado ya que FCM no funciona bien
+    if (this.isIOS) {
+      return "ios-device-token";
+    }
+
     try {
-      // VAPID Key obtenida de la consola de Firebase
-      const vapidKey = 'BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU';
-      
-      const currentToken = await getToken(this.messaging, {
-        vapidKey: vapidKey
-      });
-      
-      if (currentToken) {
-        console.log('Token FCM obtenido:', currentToken.substring(0, 10) + '...');
-        return currentToken;
-      } else {
-        console.warn('No se pudo obtener el token FCM');
-        return null;
-      }
+      return await getToken(this.messaging, { vapidKey: this.vapidKey });
     } catch (error) {
-      console.error('Error al obtener token:', error);
+      console.error("Error al obtener token:", error);
       return null;
     }
   }
 
+  /**
+   * Set up foreground message handling with platform-specific optimizations
+   */
   setupForegroundMessages() {
+    // No es necesario para iOS ya que usamos notificaciones web estándar
+    if (this.isIOS) return;
+
     if (!this.messaging) return;
-    
+
     onMessage(this.messaging, (payload) => {
-      console.log('Mensaje recibido en primer plano:', payload);
-      
-      // Mostrar notificación cuando la app está en primer plano
       if (payload.notification) {
         const { title, body } = payload.notification;
         this.showLocalNotification(title, body);
@@ -99,26 +128,48 @@ class NotificationService {
     });
   }
 
+  /**
+   * Show a local notification using the browser's Notification API
+   * with platform-specific optimizations
+   * @param {string} title - Notification title
+   * @param {string} body - Notification body
+   * @returns {Notification|undefined} Notification object or undefined if not supported/permitted
+   */
   showLocalNotification(title, body) {
-    if ("Notification" in window && Notification.permission === "granted") {
-      const notification = new Notification(title, {
-        body,
-        icon: "/img/ModernIcon.svg",
-        badge: "/img/ModernIcon.svg",
-        tag: "energy-club",
-        requireInteraction: false,
-        silent: false,
-      });
+    if (!("Notification" in window) || Notification.permission !== "granted")
+      return;
 
-      // Auto-cerrar después de 4 segundos
-      setTimeout(() => {
-        notification.close();
-      }, 4000);
+    const options = {
+      body,
+      icon: "/img/ModernIcon.svg",
+      badge: "/img/ModernIcon.svg",
+      tag: "energy-club",
+      requireInteraction: false,
+      silent: false,
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: 1,
+      },
+    };
 
-      return notification;
+    // Añadir vibración para móviles
+    if (this.isIOS || this.isAndroid) {
+      options.vibrate = [200, 100, 200];
     }
+
+    const notification = new Notification(title, options);
+
+    // En iOS, cerrar más rápido para mejorar la experiencia
+    const timeout = this.isIOS ? 3000 : 4000;
+    setTimeout(() => notification.close(), timeout);
+
+    return notification;
   }
 
+  /**
+   * Show a welcome notification when notifications are enabled
+   * @returns {Notification|undefined} Notification object or undefined if not supported/permitted
+   */
   async showWelcomeNotification() {
     return this.showLocalNotification(
       "🎉 ¡Notificaciones activadas!",
@@ -126,34 +177,36 @@ class NotificationService {
     );
   }
 
+  /**
+   * Get the current notification permission status
+   * @returns {Promise<string>} Permission status: "granted", "denied", or "default"
+   */
   async getNotificationPermission() {
-    if ("Notification" in window) {
-      return Notification.permission;
-    }
-    return "default";
+    return "Notification" in window ? Notification.permission : "default";
   }
 
+  /**
+   * Check if push notifications are enabled with platform-specific handling
+   * @returns {Promise<boolean>} True if notifications are enabled and token exists
+   */
   async isPushNotificationsEnabled() {
-    const permission = await this.getNotificationPermission();
-    return permission === "granted" && this.token !== null;
+    // Para iOS, solo verificar el permiso ya que no usamos FCM
+    if (this.isIOS) {
+      return Notification.permission === "granted";
+    }
+
+    // Para otras plataformas, verificar permiso y token
+    return Notification.permission === "granted" && !!this.token;
   }
 
-  async getDebugInfo() {
-    await this.init();
-
-    const permission = await this.getNotificationPermission();
-    const subscribed = await this.isPushNotificationsEnabled();
-    
-    return {
-      initialized: this.initialized,
-      permission,
-      subscribed,
-      token: this.token ? this.token.substring(0, 10) + '...' : null,
-      notificationSupported: "Notification" in window,
-      serviceWorkerSupported: "serviceWorker" in navigator,
-      isSecureContext: window.isSecureContext,
-      userAgent: navigator.userAgent,
-    };
+  /**
+   * Register a callback for subscription changes
+   * @param {Function} callback - Function to call when subscription status changes
+   */
+  onSubscriptionChange(callback) {
+    // This is a placeholder for the actual implementation
+    // In a real implementation, you would set up a listener for subscription changes
+    console.log("Subscription change callback registered", callback);
   }
 }
 

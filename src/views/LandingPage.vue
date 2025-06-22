@@ -14,9 +14,11 @@
 
       <div class="actions">
         <button
+          type="button"
           v-if="!isPWAInstalled && installPromptEvent"
           @click="promptPWAInstall"
           class="btn btn-primary btn-install"
+          aria-label="Anclar aplicación al inicio"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -32,9 +34,11 @@
           Anclar al Inicio
         </button>
         <button
+          type="button"
           v-if="shouldShowNotifyButton"
           @click="enableNotifications"
           class="btn btn-secondary btn-notify"
+          aria-label="Activar notificaciones"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -50,9 +54,11 @@
           Activar Notificaciones
         </button>
         <button
+          type="button"
           v-if="isPWAInstalled"
           @click="goToApp"
           class="btn btn-primary btn-enter"
+          aria-label="Entrar a la aplicación"
         >
           Entrar a la App
         </button>
@@ -65,19 +71,13 @@
       :installPromptEvent="installPromptEvent"
       :isPwaInstalled="isPWAInstalled"
       @install="promptPWAInstall"
-      @dismiss="onToastDismiss"
-      @close="onToastClose"
     />
-
-    <!-- Panel de debug OneSignal (solo en desarrollo) -->
-    <OneSignalDebug />
   </div>
 </template>
 
 <script>
 import ThreeDLogo from "../components/ThreeLogo.vue";
 import InstallToast from "../components/InstallToast.vue";
-import OneSignalDebug from "../components/OneSignalDebug.vue";
 import notificationService from "../services/notificationService.js";
 
 export default {
@@ -85,7 +85,6 @@ export default {
   components: {
     ThreeDLogo,
     InstallToast,
-    OneSignalDebug,
   },
   data() {
     return {
@@ -107,26 +106,76 @@ export default {
     },
   },
   methods: {
+    // Métodos de inicialización
+    checkPWAStatus() {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone;
+      if (standalone) {
+        this.isPWAInstalled = true;
+      }
+    },
+    async checkNotificationStatus() {
+      try {
+        const [permission, isSubscribed] = await Promise.all([
+          notificationService.getNotificationPermission(),
+          notificationService.isPushNotificationsEnabled(),
+        ]);
+
+        this.notificationsEnabled = permission === "granted" && isSubscribed;
+      } catch (error) {
+        console.error("Error al verificar estado de notificaciones:", {
+          error,
+          message: error.message,
+          code: error.code,
+        });
+        this.notificationsEnabled = false;
+      }
+    },
+    performInitialRedirectLogic() {
+      if (!this.isPWAInstalled) {
+        this.pwaMessage =
+          "Disfruta la experiencia completa instalando nuestra app.";
+        return;
+      }
+
+      if (this.notificationsEnabled) {
+        this.goToApp();
+      } else {
+        this.pwaMessage =
+          "¡Bienvenido de nuevo! Considera activar las notificaciones.";
+      }
+    },
+
+    // Métodos de acción
     async promptPWAInstall() {
       if (!this.installPromptEvent) {
         this.pwaMessage =
-          "La opción de instalar no está disponible en este navegador/momento.";
+          "La instalación no está disponible en este momento. Asegúrate de usar un navegador compatible.";
         return;
       }
-      this.installPromptEvent.prompt();
-      const { outcome } = await this.installPromptEvent.userChoice;
-      if (outcome === "accepted") {
-        this.pwaMessage = "Instalando app...";
-      } else {
-        this.pwaMessage = "Instalación cancelada.";
+
+      try {
+        this.pwaMessage = "Preparando instalación...";
+        this.installPromptEvent.prompt();
+        const { outcome } = await this.installPromptEvent.userChoice;
+
+        this.pwaMessage =
+          outcome === "accepted"
+            ? "Instalando app..."
+            : "Instalación cancelada. Puedes intentarlo más tarde.";
+
+        this.installPromptEvent = null;
+      } catch (error) {
+        console.error("Error durante la instalación:", error);
+        this.pwaMessage =
+          "Hubo un problema durante la instalación. Por favor, inténtalo de nuevo.";
       }
-      this.installPromptEvent = null;
     },
     async enableNotifications() {
       this.pwaMessage = "Solicitando permiso para notificaciones...";
 
       try {
-        // Verificar si ya están habilitadas
         const isAlreadyEnabled =
           await notificationService.isPushNotificationsEnabled();
         if (isAlreadyEnabled) {
@@ -136,55 +185,19 @@ export default {
           return;
         }
 
-        // Mostrar prompt de notificaciones
-        const result = await notificationService.showNotificationPrompt();
-
+        const result = await notificationService.requestPermission();
         if (result.success) {
           this.notificationsEnabled = true;
-
-          if (result.native) {
-            this.pwaMessage = "¡Notificaciones nativas activadas! 📱";
-          } else if (result.alreadySubscribed) {
-            this.pwaMessage = "¡Las notificaciones ya estaban activadas!";
-          } else {
-            this.pwaMessage = "¡Notificaciones activadas con éxito!";
-          }
-
+          this.pwaMessage = "¡Notificaciones activadas con éxito!";
           if (this.isPWAInstalled) this.goToApp();
         } else {
-          if (result.userDenied) {
-            this.pwaMessage =
-              "Permisos denegados. Puedes habilitarlos desde configuración del navegador.";
-          } else if (result.error) {
-            console.error("Error en notificaciones:", result.error);
-            if (result.fallback) {
-              this.pwaMessage = "Usando sistema de notificaciones básico.";
-            } else {
-              this.pwaMessage =
-                "Error al activar notificaciones. Inténtalo de nuevo.";
-            }
-          } else {
-            this.pwaMessage = "Permiso de notificaciones no concedido.";
-          }
+          this.pwaMessage = result.userDenied
+            ? "Permisos denegados. Puedes habilitarlos desde configuración del navegador."
+            : "Error al activar notificaciones. Inténtalo de nuevo.";
         }
-
-        // Registrar listener para cambios futuros
-        notificationService.onSubscriptionChange((isSubscribed) => {
-          this.notificationsEnabled = isSubscribed;
-          if (isSubscribed) {
-            this.pwaMessage = "¡Notificaciones activadas!";
-            if (this.isPWAInstalled) this.goToApp();
-          }
-        });
       } catch (error) {
         console.error("Error al activar notificaciones:", error);
         this.pwaMessage = "Hubo un problema al activar las notificaciones.";
-
-        // Mostrar información de debug en desarrollo
-        if (process.env.NODE_ENV === "development") {
-          const debugInfo = await notificationService.getDebugInfo();
-          console.log("Notification Service Debug Info:", debugInfo);
-        }
       }
     },
     goToApp() {
@@ -196,61 +209,6 @@ export default {
       } else {
         this.$router.push("/presentacion");
       }
-    },
-    checkPWAStatus() {
-      const standalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone;
-      if (standalone) {
-        this.isPWAInstalled = true;
-      }
-    },
-    async checkNotificationStatus() {
-      try {
-        const permission =
-          await notificationService.getNotificationPermission();
-        const isSubscribed =
-          await notificationService.isPushNotificationsEnabled();
-
-        this.notificationsEnabled = permission === "granted" && isSubscribed;
-
-        console.log("Notification status check:", {
-          permission,
-          isSubscribed,
-          enabled: this.notificationsEnabled,
-        });
-      } catch (error) {
-        console.error("Error checking notification status:", error);
-        this.notificationsEnabled = false;
-
-        // Mostrar información de debug en desarrollo
-        if (process.env.NODE_ENV === "development") {
-          const debugInfo = await notificationService.getDebugInfo();
-          console.log("Notification Service Debug Info:", debugInfo);
-        }
-      }
-    },
-    performInitialRedirectLogic() {
-      if (this.isPWAInstalled) {
-        if (this.notificationsEnabled) {
-          console.log(
-            "PWA instalada y notificaciones activas. Redirigiendo a la app."
-          );
-          this.goToApp();
-        } else {
-          this.pwaMessage =
-            "¡Bienvenido de nuevo! Considera activar las notificaciones.";
-        }
-      } else {
-        this.pwaMessage =
-          "Disfruta la experiencia completa instalando nuestra app.";
-      }
-    },
-    onToastDismiss() {
-      console.log("Toast de instalación rechazado por 24h");
-    },
-    onToastClose() {
-      console.log("Toast de instalación cerrado temporalmente");
     },
   },
   async mounted() {
@@ -272,11 +230,11 @@ export default {
       this.$router.push("/presentacion");
     });
   },
-  beforeUnmount() {},
 };
 </script>
 
 <style scoped lang="scss">
+@use "sass:color";
 .landing-container {
   min-height: 100vh;
   background-color: #0d0d0d;
@@ -378,6 +336,10 @@ export default {
   &:active {
     transform: translateY(-1px) scale(0.98);
   }
+  &:focus-visible {
+    outline: 2px solid #64ffda;
+    outline-offset: 2px;
+  }
 
   &-primary {
     background: linear-gradient(145deg, #8b5cf6, #7c3aed);
@@ -386,8 +348,8 @@ export default {
     &:hover {
       background: linear-gradient(
         145deg,
-        darken(#8b5cf6, 5%),
-        darken(#7c3aed, 5%)
+        color.adjust(#8b5cf6, $lightness: -5%),
+        color.adjust(#7c3aed, $lightness: -5%)
       );
     }
   }
@@ -408,5 +370,28 @@ export default {
   color: #9ca3af;
   min-height: 1.3em;
   font-style: italic;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .cta-section {
+    padding-top: 30vh;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: 300px;
+  }
 }
 </style>
