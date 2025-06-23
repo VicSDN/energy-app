@@ -5,59 +5,62 @@
         <img src="/img/ModernIcon.svg" alt="Energy Logo" />
       </div>
       <h2>🎉 ¡Instala Energy Club!</h2>
-      
+
       <!-- Paso 1: Instalar PWA -->
       <div v-if="!isInstalled" class="setup-step">
         <h3>📱 Añadir a pantalla de inicio</h3>
         <p>Para la mejor experiencia, instala nuestra app:</p>
-        
-        <button 
-          v-if="installPromptEvent" 
-          @click="handleInstall" 
+
+        <button
+          v-if="installPromptEvent"
+          @click="handleInstall"
           class="install-btn-big"
         >
           ⬇️ Instalar App
         </button>
-        
+
         <div v-else class="manual-install">
-          <p class="help-text">No aparece el botón automático? Instálala manualmente:</p>
+          <p class="help-text">
+            No aparece el botón automático? Instálala manualmente:
+          </p>
           <button @click="showInstallInstructions" class="help-btn">
             📖 ¿Cómo instalar?
           </button>
         </div>
       </div>
-      
+
       <!-- Paso 2: Permitir notificaciones -->
       <div v-else-if="!notificationsAllowed" class="setup-step">
         <h3>🔔 Activar notificaciones</h3>
-        <p><strong>¡Obligatorio!</strong> Necesitas activar las notificaciones para recibir avisos de eventos y ofertas exclusivas.</p>
-        
+        <p>
+          <strong>¡Obligatorio!</strong> Necesitas activar las notificaciones
+          para recibir avisos de eventos y ofertas exclusivas.
+        </p>
+
         <button @click="requestNotifications" class="notification-btn-big">
           🔔 Permitir notificaciones
         </button>
-        
+
         <p class="required-note">
           ⚠️ No podrás continuar sin activar las notificaciones
         </p>
       </div>
-      
+
       <!-- Paso 3: Todo listo -->
       <div v-else class="setup-complete">
         <h3>✅ ¡Todo listo!</h3>
         <p>La app está instalada y las notificaciones activadas.</p>
-        
-        <button @click="goToApp" class="go-to-app-btn">
-          🚀 Ir a la app
-        </button>
+
+        <button @click="goToApp" class="go-to-app-btn">🚀 Ir a la app</button>
       </div>
-      
+
       <!-- Estado actual -->
       <div class="status">
         <div class="status-item" :class="{ completed: isInstalled }">
-          📱 App instalada: {{ isInstalled ? '✅' : '❌' }}
+          📱 App instalada: {{ isInstalled ? "✅" : "❌" }}
         </div>
         <div class="status-item" :class="{ completed: notificationsAllowed }">
-          🔔 Notificaciones: {{ notificationsAllowed ? '✅' : '❌' }}
+          🔔 Notificaciones: {{ notificationsAllowed ? "✅" : "❌" }}
         </div>
       </div>
     </div>
@@ -81,8 +84,10 @@ export default {
     // Detectar si es móvil
     checkMobile() {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      this.isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-      
+      this.isMobile =
+        /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent.toLowerCase()
+        );
       // En desktop, saltar todo y ir directo a la app
       if (!this.isMobile) {
         this.isInstalled = true;
@@ -94,24 +99,23 @@ export default {
 
     // Verificar si la PWA está instalada
     checkPWAInstalled() {
-      this.isInstalled = 
-        window.matchMedia('(display-mode: standalone)').matches ||
+      this.isInstalled =
+        window.matchMedia("(display-mode: standalone)").matches ||
         window.navigator.standalone === true;
     },
 
     // Verificar estado de notificaciones
     checkNotifications() {
-      this.notificationsAllowed = Notification.permission === 'granted';
+      this.notificationsAllowed = Notification.permission === "granted";
     },
 
     // Configurar listener para instalación PWA
     setupPWAListener() {
-      window.addEventListener('beforeinstallprompt', (e) => {
+      window.addEventListener("beforeinstallprompt", (e) => {
         e.preventDefault();
         this.installPromptEvent = e;
       });
-      
-      window.addEventListener('appinstalled', () => {
+      window.addEventListener("appinstalled", () => {
         this.isInstalled = true;
       });
     },
@@ -121,7 +125,7 @@ export default {
       if (this.installPromptEvent) {
         this.installPromptEvent.prompt();
         const choiceResult = await this.installPromptEvent.userChoice;
-        if (choiceResult.outcome === 'accepted') {
+        if (choiceResult.outcome === "accepted") {
           this.isInstalled = true;
         }
         this.installPromptEvent = null;
@@ -133,16 +137,16 @@ export default {
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
       const isIOS = /iphone|ipad|ipod/i.test(userAgent.toLowerCase());
       const isAndroid = /android/i.test(userAgent.toLowerCase());
-      
-      let message = '';
+      let message = "";
       if (isIOS) {
-        message = '1. Pulsa el botón "Compartir" (🔗)\n2. Selecciona "Añadir a pantalla de inicio"\n3. Pulsa "Añadir"';
+        message =
+          '1. Pulsa el botón "Compartir" (🔗)\n2. Selecciona "Añadir a pantalla de inicio"\n3. Pulsa "Añadir"';
       } else if (isAndroid) {
-        message = '1. Pulsa los tres puntos del menú (⋮)\n2. Selecciona "Instalar aplicación"\n3. Confirma la instalación';
+        message =
+          '1. Pulsa los tres puntos del menú (⋮)\n2. Selecciona "Instalar aplicación"\n3. Confirma la instalación';
       } else {
-        message = 'Busca la opción de instalación en el menú de tu navegador.';
+        message = "Busca la opción de instalación en el menú de tu navegador.";
       }
-      
       alert(message);
     },
 
@@ -150,27 +154,25 @@ export default {
     async requestNotifications() {
       try {
         const permission = await Notification.requestPermission();
-        this.notificationsAllowed = permission === 'granted';
-        
+        this.notificationsAllowed = permission === "granted";
         if (this.notificationsAllowed) {
           // Mostrar notificación de bienvenida
-          new Notification('¡Bienvenido a Energy Club!', {
-            body: 'Ya estás listo para recibir todas las novedades.',
-            icon: '/img/icons/icon-192x192.png'
+          new Notification("¡Bienvenido a Energy Club!", {
+            body: "Ya estás listo para recibir todas las novedades.",
+            icon: "/img/icons/icon-192x192.png",
           });
         }
       } catch (error) {
-        console.error('Error al solicitar notificaciones:', error);
+        // eslint-disable-next-line no-console
+        console.error("Error al solicitar notificaciones:", error);
       }
     },
 
-
     // Ir a la app principal
     goToApp() {
-      localStorage.setItem('initialCheckComplete', 'true');
+      localStorage.setItem("initialCheckComplete", "true");
       this.showOverlay = false;
-      this.$emit('check-complete');
-      
+      this.$emit("check-complete");
       // Si es PWA instalada, abrir en modo standalone
       if (this.isInstalled && this.isMobile) {
         // Esto causará que la PWA se abra en modo standalone
@@ -180,10 +182,10 @@ export default {
   },
   mounted() {
     // Verificar si ya completó el setup
-    const initialCheckComplete = localStorage.getItem('initialCheckComplete');
-    if (initialCheckComplete === 'true') {
+    const initialCheckComplete = localStorage.getItem("initialCheckComplete");
+    if (initialCheckComplete === "true") {
       this.showOverlay = false;
-      this.$emit('check-complete');
+      this.$emit("check-complete");
       return;
     }
 
@@ -254,7 +256,8 @@ export default {
 }
 
 @keyframes glow {
-  0%, 100% {
+  0%,
+  100% {
     filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.6));
   }
   50% {
@@ -343,7 +346,8 @@ h3 {
 }
 
 @keyframes pulse-btn {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
   }
   50% {
@@ -439,20 +443,20 @@ h3 {
   .pwa-setup-content {
     padding: 30px 20px;
   }
-  
+
   .logo {
     width: 60px;
     height: 60px;
   }
-  
+
   h2 {
     font-size: 1.4rem;
   }
-  
+
   h3 {
     font-size: 1.1rem;
   }
-  
+
   .install-btn-big,
   .notification-btn-big,
   .go-to-app-btn {

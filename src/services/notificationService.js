@@ -52,6 +52,7 @@ class NotificationService {
       this.initialized = true;
       return true;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error inicializando notificaciones:", error);
       return false;
     }
@@ -88,6 +89,7 @@ class NotificationService {
         userDenied: permission === "denied",
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error al solicitar permisos:", error);
       return { success: false, error: error.message };
     }
@@ -106,6 +108,7 @@ class NotificationService {
     try {
       return await getToken(this.messaging, { vapidKey: this.vapidKey });
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error al obtener token:", error);
       return null;
     }
@@ -206,6 +209,7 @@ class NotificationService {
   onSubscriptionChange(callback) {
     // This is a placeholder for the actual implementation
     // In a real implementation, you would set up a listener for subscription changes
+    // eslint-disable-next-line no-console
     console.log("Subscription change callback registered", callback);
   }
 }

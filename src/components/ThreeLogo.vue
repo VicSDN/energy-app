@@ -87,6 +87,7 @@ export default {
         container.appendChild(renderer.domElement);
         this.renderer = markRaw(renderer);
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error("Error WebGLRenderer:", e);
         return;
       }

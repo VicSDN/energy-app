@@ -23,8 +23,8 @@ export default {
   },
   mounted() {
     // Verificar si ya completó el setup inicial
-    const initialCheckComplete = localStorage.getItem('initialCheckComplete');
-    if (initialCheckComplete === 'true') {
+    const initialCheckComplete = localStorage.getItem("initialCheckComplete");
+    if (initialCheckComplete === "true") {
       this.showInitialCheck = false;
     }
   },

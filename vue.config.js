@@ -101,7 +101,7 @@ module.exports = defineConfig({
     },
   },
   devServer: {
-    https: true, // Necesario para muchas APIs en móviles
+    https: false, // Deshabilitado temporalmente para desarrollo
     port: 8080,
     host: '0.0.0.0', // Permite acceso desde otros dispositivos en la red
   },

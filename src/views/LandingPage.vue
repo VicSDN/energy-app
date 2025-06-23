@@ -124,6 +124,7 @@ export default {
 
         this.notificationsEnabled = permission === "granted" && isSubscribed;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Error al verificar estado de notificaciones:", {
           error,
           message: error.message,
@@ -167,6 +168,7 @@ export default {
 
         this.installPromptEvent = null;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Error durante la instalación:", error);
         this.pwaMessage =
           "Hubo un problema durante la instalación. Por favor, inténtalo de nuevo.";
@@ -196,6 +198,7 @@ export default {
             : "Error al activar notificaciones. Inténtalo de nuevo.";
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Error al activar notificaciones:", error);
         this.pwaMessage = "Hubo un problema al activar las notificaciones.";
       }
