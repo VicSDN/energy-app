@@ -29,18 +29,12 @@
       }
     </script>
 
-    <!-- Firebase SDK -->
-    <script defer src="/__/firebase/11.9.1/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/11.9.1/firebase-performance-compat.js"></script>
-    <script defer src="/__/firebase/init.js?useEmulator=false"></script>
+    <!-- Firebase SDK para producción -->
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics-compat.js"></script>
   </head>
   <body>
     <noscript>
@@ -50,23 +44,25 @@
     <!-- built files will be auto injected -->
 
     <script>
+      // Configuración de Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyBn2lwPfqGfPs08oTqbAq2LqlhPcS46jdM",
+        authDomain: "energy-app-d6293.firebaseapp.com",
+        projectId: "energy-app-d6293",
+        storageBucket: "energy-app-d6293.firebasestorage.app",
+        messagingSenderId: "478937638379",
+        appId: "1:478937638379:web:2f88b6d326ead0d19665ae",
+        measurementId: "G-QRH15QWGFQ"
+      };
+
+      // Inicializar Firebase
       document.addEventListener('DOMContentLoaded', function() {
         try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          console.log(`Firebase SDK loaded with ${features.join(', ')}`);
+          firebase.initializeApp(firebaseConfig);
+          firebase.analytics();
+          console.log('Firebase initialized successfully');
         } catch (e) {
-          console.error('Error loading the Firebase SDK:', e);
+          console.error('Error initializing Firebase:', e);
         }
       });
     </script>

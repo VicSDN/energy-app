@@ -101,7 +101,7 @@ module.exports = defineConfig({
     },
   },
   devServer: {
-    https: false, // Deshabilitado temporalmente para desarrollo
+    https: true, // Habilitado para desarrollo PWA
     port: 8080,
     host: '0.0.0.0', // Permite acceso desde otros dispositivos en la red
   },

@@ -1,6 +1,20 @@
-importScripts('/__/firebase/11.9.1/firebase-app-compat.js');
-importScripts('/__/firebase/11.9.1/firebase-messaging-compat.js');
-importScripts('/__/firebase/init.js');
+importScripts('https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.9.1/firebase-messaging-compat.js');
+
+// Configuración de Firebase para el Service Worker
+const firebaseConfig = {
+  apiKey: "AIzaSyBn2lwPfqGfPs08oTqbAq2LqlhPcS46jdM",
+  authDomain: "energy-app-d6293.firebaseapp.com",
+  projectId: "energy-app-d6293",
+  storageBucket: "energy-app-d6293.firebasestorage.app",
+  messagingSenderId: "478937638379",
+  appId: "1:478937638379:web:2f88b6d326ead0d19665ae",
+  measurementId: "G-QRH15QWGFQ"
+};
+
+// Inicializar Firebase en el Service Worker
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
 // Cache configuration
 const CACHE_NAME = 'energy-club-v1';

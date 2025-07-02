@@ -1,15 +1,18 @@
 <template>
   <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
   <router-view v-if="!showInitialCheck" />
+  <PWAPermissions v-if="!showInitialCheck" />
 </template>
 
 <script>
 import InitialCheck from "./components/InitialCheck.vue";
+import PWAPermissions from "./components/PWAPermissions.vue";
 
 export default {
   name: "App",
   components: {
     InitialCheck,
+    PWAPermissions,
   },
   data() {
     return {
