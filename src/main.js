@@ -9,15 +9,10 @@ app.use(router);
 app.mount("#app");
 
 // Inicializar servicios PWA después de montar la app
-if (process.env.NODE_ENV === 'production') {
-  // Manejar instalación de PWA
-  notificationService.handleInstallPrompt();
-  
-  // Configurar listener de mensajes
+// Manejar instalación de PWA
+notificationService.handleInstallPrompt();
+
+// Configurar listener de mensajes si ya están las notificaciones activadas
+if (Notification.permission === 'granted') {
   notificationService.setupMessageListener();
-  
-  // Solicitar permisos de notificación al cargar
-  setTimeout(() => {
-    notificationService.requestPermission();
-  }, 2000); // Esperar 2 segundos para mejor UX
 }

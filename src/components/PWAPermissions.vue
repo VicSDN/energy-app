@@ -76,9 +76,9 @@ export default {
     this.checkInitialStatus();
     this.setupInstallPrompt();
     
-    // Mostrar modal después de 3 segundos si es necesario
+    // Solo mostrar si nunca se ha mostrado antes y es necesario
     setTimeout(() => {
-      if (this.needsPermissions()) {
+      if (this.shouldShowModal()) {
         this.showPermissions = true;
       }
     }, 3000);
@@ -114,14 +114,19 @@ export default {
         const token = await notificationService.requestPermission();
         if (token) {
           this.notificationStatus = 'granted';
+          // Limpiar cualquier registro de denegación anterior
+          localStorage.removeItem('notifications-denied-date');
           // Aquí puedes enviar el token a tu servidor
           console.log('Token FCM:', token);
         } else {
           this.notificationStatus = 'denied';
+          // Guardar cuando se denegaron las notificaciones
+          localStorage.setItem('notifications-denied-date', Date.now().toString());
         }
       } catch (error) {
         console.error('Error al solicitar notificaciones:', error);
         this.notificationStatus = 'denied';
+        localStorage.setItem('notifications-denied-date', Date.now().toString());
       }
     },
 
@@ -157,6 +162,37 @@ export default {
         Notification.permission === 'default' ||
         (this.canInstall && this.installStatus !== 'installed')
       );
+    },
+
+    shouldShowModal() {
+      // No mostrar si ya se mostró antes
+      const alreadyShown = localStorage.getItem('pwa-permissions-shown');
+      if (alreadyShown === 'true') {
+        return false;
+      }
+
+      // No mostrar si ya está todo configurado
+      const notificationsConfigured = Notification.permission !== 'default';
+      const appInstalled = window.matchMedia('(display-mode: standalone)').matches;
+      
+      if (notificationsConfigured && (appInstalled || !this.canInstall)) {
+        // Si ya está todo configurado, marcar como mostrado
+        localStorage.setItem('pwa-permissions-shown', 'true');
+        return false;
+      }
+
+      // No mostrar si el usuario rechazó las notificaciones
+      if (Notification.permission === 'denied') {
+        const deniedDate = localStorage.getItem('notifications-denied-date');
+        const now = Date.now();
+        
+        // Solo volver a preguntar después de 7 días
+        if (deniedDate && (now - parseInt(deniedDate)) < (7 * 24 * 60 * 60 * 1000)) {
+          return false;
+        }
+      }
+
+      return this.needsPermissions();
     },
 
     closeModal() {
