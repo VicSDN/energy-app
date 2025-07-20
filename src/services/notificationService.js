@@ -2,18 +2,25 @@ import { initFirebaseApp } from "./firebase";
 
 /**
  * Service to handle Firebase Cloud Messaging (FCM) for notifications
- * with cross-platform support
+ * Centralizado y simplificado para evitar múltiples solicitudes
  */
 class NotificationService {
   constructor() {
     this.messaging = null;
-    this.vendor = "Firebase";
+    this.token = null;
     this.initialized = false;
     this.vapidKey =
       "BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU";
     this.isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     this.isAndroid = /Android/.test(navigator.userAgent);
+
+    // Estados de notificaciones centralizados
+    this.STORAGE_KEYS = {
+      PERMISSION_REQUESTED: "notification-permission-requested",
+      TOKEN: "fcm-token",
+      SETUP_COMPLETE: "notifications-setup-complete",
+    };
   }
 
   /**
@@ -62,27 +69,95 @@ class NotificationService {
   }
 
   /**
-   * Request notification permission from the user
-   * @returns {Promise<Object>} Result of the permission request
+   * Verificar si ya se solicitaron los permisos anteriormente
+   * @returns {boolean} True si ya se pidieron permisos antes
+   */
+  hasPermissionBeenRequested() {
+    return (
+      localStorage.getItem(this.STORAGE_KEYS.PERMISSION_REQUESTED) === "true"
+    );
+  }
+
+  /**
+   * Verificar si la configuración está completa
+   * @returns {boolean} True si todo está configurado
+   */
+  isSetupComplete() {
+    return (
+      localStorage.getItem(this.STORAGE_KEYS.SETUP_COMPLETE) === "true" &&
+      Notification.permission === "granted"
+    );
+  }
+
+  /**
+   * Obtener token guardado
+   * @returns {string|null} Token guardado o null
+   */
+  getSavedToken() {
+    return localStorage.getItem(this.STORAGE_KEYS.TOKEN);
+  }
+
+  /**
+   * Guardar token en localStorage
+   * @param {string} token - Token a guardar
+   */
+  saveToken(token) {
+    if (token) {
+      localStorage.setItem(this.STORAGE_KEYS.TOKEN, token);
+      this.token = token;
+      // eslint-disable-next-line no-console
+      console.log("✅ Token FCM guardado:", token);
+    }
+  }
+
+  /**
+   * Marcar setup como completo
+   */
+  markSetupComplete() {
+    localStorage.setItem(this.STORAGE_KEYS.SETUP_COMPLETE, "true");
+    localStorage.setItem(this.STORAGE_KEYS.PERMISSION_REQUESTED, "true");
+  }
+
+  /**
+   * Solicitar permisos de notificación (MÉTODO PRINCIPAL)
+   * @returns {Promise<Object>} Resultado de la solicitud
    */
   async requestPermission() {
     try {
+      // Marcar que ya se pidieron permisos
+      localStorage.setItem(this.STORAGE_KEYS.PERMISSION_REQUESTED, "true");
+
       await this.init();
 
-      if (!("Notification" in window)) {
+      if (!this.isSupported()) {
         return {
           success: false,
-          error: "Las notificaciones no están soportadas en este navegador",
+          error: "Las notificaciones no son soportadas en este dispositivo",
         };
       }
 
       const permission = await Notification.requestPermission();
+
       if (permission === "granted") {
+        // Obtener y guardar el token
         this.token = await this.getOrGenerateToken();
-        this.setupForegroundMessages();
+        this.saveToken(this.token);
+
+        // Configurar listeners
+        await this.setupForegroundMessages();
+
+        // Marcar como completo
+        this.markSetupComplete();
+
+        // Mostrar notificación de bienvenida
+        setTimeout(() => {
+          this.showWelcomeNotification();
+        }, 1000);
+
         return {
           success: true,
           permission: "granted",
+          token: this.token,
         };
       }
 

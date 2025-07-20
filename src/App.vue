@@ -1,18 +1,15 @@
 <template>
   <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
   <router-view v-if="!showInitialCheck" />
-  <PWAPermissions v-if="!showInitialCheck" />
 </template>
 
 <script>
 import InitialCheck from "./components/InitialCheck.vue";
-import PWAPermissions from "./components/PWAPermissions.vue";
 
 export default {
   name: "App",
   components: {
     InitialCheck,
-    PWAPermissions,
   },
   data() {
     return {
@@ -24,11 +21,21 @@ export default {
       this.showInitialCheck = false;
     },
   },
-  mounted() {
+  async mounted() {
+    // Importar servicio de notificaciones
+    const notificationService = await import(
+      "./services/notificationService.js"
+    ).then((m) => m.default);
+
     // Verificar si ya completó el setup inicial
     const initialCheckComplete = localStorage.getItem("initialCheckComplete");
-    if (initialCheckComplete === "true") {
+    const notificationsSetup = notificationService.isSetupComplete();
+
+    if (initialCheckComplete === "true" && notificationsSetup) {
       this.showInitialCheck = false;
+    } else if (initialCheckComplete === "true" && !notificationsSetup) {
+      // Si la app está configurada pero las notificaciones no, resetear
+      localStorage.removeItem("initialCheckComplete");
     }
   },
 };

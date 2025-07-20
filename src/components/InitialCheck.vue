@@ -68,6 +68,8 @@
 </template>
 
 <script>
+import notificationService from "../services/notificationService";
+
 export default {
   name: "InitialCheck",
   data() {
@@ -77,6 +79,8 @@ export default {
       isInstalled: false,
       notificationsAllowed: false,
       installPromptEvent: null,
+      isRequestingPermissions: false,
+      permissionError: null,
     };
   },
   computed: {},
@@ -103,9 +107,9 @@ export default {
         window.navigator.standalone === true;
     },
 
-    // Verificar estado de notificaciones
+    // Verificar estado de notificaciones usando servicio centralizado
     checkNotifications() {
-      this.notificationsAllowed = Notification.permission === "granted";
+      this.notificationsAllowed = notificationService.isSetupComplete();
     },
 
     // Configurar listener para instalación PWA
@@ -149,21 +153,37 @@ export default {
       alert(message);
     },
 
-    // Solicitar permisos de notificaciones
+    // Solicitar permisos de notificaciones usando servicio centralizado
     async requestNotifications() {
+      if (this.isRequestingPermissions) return; // Evitar múltiples solicitudes
+
+      this.isRequestingPermissions = true;
+      this.permissionError = null;
+
       try {
-        const permission = await Notification.requestPermission();
-        this.notificationsAllowed = permission === "granted";
-        if (this.notificationsAllowed) {
-          // Mostrar notificación de bienvenida
-          new Notification("¡Bienvenido a Energy Club!", {
-            body: "Ya estás listo para recibir todas las novedades.",
-            icon: "/img/icons/icon-192x192.png",
-          });
+        // eslint-disable-next-line no-console
+        console.log("🔔 Solicitando permisos de notificación...");
+
+        const result = await notificationService.requestPermission();
+
+        if (result.success) {
+          this.notificationsAllowed = true;
+          // eslint-disable-next-line no-console
+          console.log("✅ Notificaciones configuradas correctamente");
+          // eslint-disable-next-line no-console
+          console.log("📱 Token FCM:", result.token);
+        } else {
+          this.permissionError =
+            result.error || "Error al configurar notificaciones";
+          // eslint-disable-next-line no-console
+          console.error("❌ Error en notificaciones:", result);
         }
       } catch (error) {
+        this.permissionError = "Error inesperado al solicitar permisos";
         // eslint-disable-next-line no-console
-        console.error("Error al solicitar notificaciones:", error);
+        console.error("❌ Error inesperado:", error);
+      } finally {
+        this.isRequestingPermissions = false;
       }
     },
 

@@ -43,14 +43,16 @@ module.exports = defineConfig({
         maxEntrypointSize: 300000, // 300kb - for initial bundle
         hints: "warning",
         // Only warn about initial chunks, not lazy-loaded ones
-        assetFilter: function(assetFilename) {
+        assetFilter: function (assetFilename) {
           // Don't warn about lazy-loaded chunks
-          if (assetFilename.includes('three.') || 
-              assetFilename.includes('firebase.')) {
+          if (
+            assetFilename.includes("three.") ||
+            assetFilename.includes("firebase.")
+          ) {
             return false;
           }
           return true;
-        }
+        },
       };
     }
   },
