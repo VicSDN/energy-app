@@ -176,6 +176,7 @@ export default {
     this.detectDevice();
     this.setupPWAListeners();
     this.checkPWAInstalled();
+    this.handleInitialFlow();
   },
 
   methods: {
@@ -205,12 +206,16 @@ export default {
     // === PWA INSTALLATION ===
     setupPWAListeners() {
       window.addEventListener("beforeinstallprompt", (e) => {
+        // eslint-disable-next-line no-console
+        console.log("📦 PWA install prompt detected!");
         e.preventDefault();
         this.installPrompt = e;
         this.canInstallPWA = true;
       });
 
       window.addEventListener("appinstalled", () => {
+        // eslint-disable-next-line no-console
+        console.log("✅ PWA installed successfully!");
         this.isInstalled = true;
         this.canInstallPWA = false;
         this.installPrompt = null;
@@ -301,6 +306,40 @@ export default {
     nextStep() {
       if (this.currentStep < this.totalSteps) {
         this.currentStep++;
+      }
+    },
+
+    // === INITIAL FLOW HANDLER ===
+    handleInitialFlow() {
+      // eslint-disable-next-line no-console
+      console.log("🔍 Setup Wizard Debug Info:");
+      // eslint-disable-next-line no-console
+      console.log("  - isMobile:", this.isMobile);
+      // eslint-disable-next-line no-console
+      console.log("  - canInstallPWA:", this.canInstallPWA);
+      // eslint-disable-next-line no-console
+      console.log("  - isInstalled:", this.isInstalled);
+      // eslint-disable-next-line no-console
+      console.log("  - currentStep:", this.currentStep);
+
+      // For desktop: wait a bit for beforeinstallprompt event, then auto-advance
+      if (!this.isMobile) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "🖥️ Desktop detected, waiting for PWA prompt or auto-advancing..."
+        );
+
+        setTimeout(() => {
+          // If after 2 seconds we still don't have PWA prompt, consider desktop as "installed"
+          if (!this.canInstallPWA && !this.isInstalled) {
+            // eslint-disable-next-line no-console
+            console.log(
+              "⏭️ No PWA prompt available, treating as installed and advancing..."
+            );
+            this.isInstalled = true;
+            this.nextStep();
+          }
+        }, 2000);
       }
     },
 
