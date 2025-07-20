@@ -110,20 +110,20 @@ export default {
   },
   computed: {
     shouldShowInstallButton() {
-      // Mostrar siempre el botón de instalación si no está instalada
+      // Mostrar si no está instalada O si no funciona la detección automática
       return !this.isPWAInstalled;
     },
     shouldShowNotifyButton() {
-      // Mostrar botón de notificaciones solo si la app ya está instalada
-      return this.isPWAInstalled && !this.notificationsEnabled;
+      // Mostrar si las notificaciones no están habilitadas
+      return !this.notificationsEnabled;
     },
     shouldShowEnterButton() {
-      // Solo mostrar botón de entrar si está instalada Y tiene notificaciones
+      // Mostrar si tanto PWA como notificaciones están activas
       return this.isPWAInstalled && this.notificationsEnabled;
     },
     canAccessApp() {
-      // Solo puede acceder si está instalada Y tiene notificaciones activadas
-      return this.isPWAInstalled && this.notificationsEnabled;
+      // Permitir acceso si al menos una de las dos condiciones se cumple
+      return this.isPWAInstalled || this.notificationsEnabled;
     },
   },
   methods: {
@@ -155,66 +155,108 @@ export default {
       }
     },
     performInitialRedirectLogic() {
-      if (!this.isPWAInstalled) {
-        this.pwaMessage =
-          "Disfruta la experiencia completa instalando nuestra app.";
+      // Si ambas están activas, ir directamente a la app
+      if (this.isPWAInstalled && this.notificationsEnabled) {
+        setTimeout(() => this.goToApp(), 1000);
+        this.pwaMessage = "¡Todo listo! Accediendo a Energy Club...";
         return;
       }
 
-      if (this.notificationsEnabled) {
-        this.goToApp();
+      // Si solo una está activa, mostrar mensaje amigable
+      if (this.isPWAInstalled) {
+        this.pwaMessage =
+          "¡App instalada! Considera activar las notificaciones para la mejor experiencia.";
+      } else if (this.notificationsEnabled) {
+        this.pwaMessage =
+          "¡Notificaciones activas! Instala la app para una experiencia completa.";
       } else {
         this.pwaMessage =
-          "¡Bienvenido de nuevo! Considera activar las notificaciones.";
+          "¡Bienvenido a Energy Club! Configura tu experiencia.";
       }
     },
 
     // Métodos de acción
     async promptPWAInstall() {
-      if (!this.installPromptEvent) {
-        // Fallback para navegadores sin beforeinstallprompt o Safari
-        this.pwaMessage = "Para instalar en tu dispositivo:";
+      // Debug logs
+      // console.log("Debug instalación:", {
+      //   hasInstallPromptEvent: !!this.installPromptEvent,
+      //   isPWAInstalled: this.isPWAInstalled,
+      //   userAgent: navigator.userAgent,
+      //   standalone: window.matchMedia("(display-mode: standalone)").matches,
+      //   navigatorStandalone: window.navigator.standalone,
+      // });
 
-        if (
-          navigator.userAgent.includes("iPhone") ||
-          navigator.userAgent.includes("iPad")
-        ) {
-          this.pwaMessage +=
-            " Toca el icono 'Compartir' y selecciona 'Añadir a pantalla de inicio'";
-        } else if (navigator.userAgent.includes("Android")) {
-          this.pwaMessage +=
-            " Ve al menú del navegador y selecciona 'Añadir a pantalla de inicio' o 'Instalar app'";
-        } else {
-          this.pwaMessage +=
-            " Busca la opción 'Instalar' en el menú de tu navegador o en la barra de direcciones";
-        }
+      // Verificar si ya está instalada primero
+      if (this.isPWAInstalled) {
+        this.pwaMessage = "¡La app ya está instalada!";
+        this.goToApp();
         return;
       }
 
-      try {
-        this.pwaMessage = "Preparando instalación...";
-        this.installPromptEvent.prompt();
-        const { outcome } = await this.installPromptEvent.userChoice;
+      // Si tenemos el evento nativo de instalación, usarlo
+      if (this.installPromptEvent) {
+        try {
+          this.pwaMessage = "Preparando instalación...";
+          // console.log("Ejecutando prompt de instalación...");
 
-        this.pwaMessage =
-          outcome === "accepted"
-            ? "¡Instalando app! Espera un momento..."
-            : "Instalación cancelada. Puedes intentarlo más tarde.";
+          await this.installPromptEvent.prompt();
+          const { outcome } = await this.installPromptEvent.userChoice;
 
-        if (outcome === "accepted") {
-          // Forzar actualización del estado después de un delay
-          setTimeout(() => {
-            this.checkPWAStatus();
-          }, 1000);
+          // console.log("Resultado de instalación:", outcome);
+
+          if (outcome === "accepted") {
+            this.pwaMessage = "¡App instalada! Configurando...";
+            this.isPWAInstalled = true;
+            this.installPromptEvent = null;
+
+            // Marcar como instalada y continuar con notificaciones
+            setTimeout(() => {
+              this.checkPWAStatus();
+              if (!this.notificationsEnabled) {
+                this.pwaMessage = "¡Genial! Ahora activa las notificaciones.";
+              } else {
+                this.goToApp();
+              }
+            }, 1500);
+          } else {
+            this.pwaMessage =
+              "Instalación cancelada. Puedes usar la app desde el navegador.";
+            // Permitir continuar sin instalación después de 3 segundos
+            setTimeout(() => {
+              this.pwaMessage = "Continúa con el siguiente paso.";
+            }, 3000);
+          }
+
+          this.installPromptEvent = null;
+        } catch (error) {
+          // console.error("Error durante la instalación:", error);
+          this.handleInstallationFallback();
         }
-
-        this.installPromptEvent = null;
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error("Error durante la instalación:", error);
-        this.pwaMessage =
-          "Hubo un problema durante la instalación. Intenta usar el menú de tu navegador.";
+      } else {
+        // Fallback: mostrar instrucciones y permitir continuar
+        this.handleInstallationFallback();
       }
+    },
+
+    handleInstallationFallback() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+
+      if (isIOS) {
+        this.pwaMessage =
+          "En iOS: Toca 'Compartir' → 'Añadir a pantalla de inicio'";
+      } else if (isAndroid) {
+        this.pwaMessage =
+          "En Android: Ve al menú → 'Instalar app' o 'Añadir a inicio'";
+      } else {
+        this.pwaMessage = "Busca el icono 'Instalar' en la barra del navegador";
+      }
+
+      // Marcar como "instalada" para continuar después de 5 segundos
+      setTimeout(() => {
+        this.pwaMessage = "¿Ya instalaste la app? ¡Continuemos!";
+        this.isPWAInstalled = true;
+      }, 5000);
     },
     async enableNotifications() {
       this.pwaMessage = "Solicitando permiso para notificaciones...";
