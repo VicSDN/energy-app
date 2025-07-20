@@ -88,7 +88,11 @@ export default {
           this.showWelcome = false;
           // Configurar listener de mensajes
           notificationService.setupForegroundMessages();
+          // Mostrar notificación de bienvenida
+          await notificationService.showWelcomeNotification();
         } else {
+          // eslint-disable-next-line no-console
+          console.warn("Notificaciones rechazadas:", result);
           this.skipNotifications();
         }
       } catch (error) {

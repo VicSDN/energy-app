@@ -4,9 +4,6 @@
 
 <script>
 import { markRaw } from "vue";
-import * as THREE from "three";
-import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export default {
   name: "ThreeDLogo",
@@ -41,7 +38,39 @@ export default {
     };
   },
   mounted() {
-    this.$nextTick(() => {
+    this.$nextTick(async () => {
+      // Lazy load Three.js
+      const [
+        {
+          Scene,
+          PerspectiveCamera,
+          WebGLRenderer,
+          AmbientLight,
+          DirectionalLight,
+          Group,
+          MeshStandardMaterial,
+          Box3,
+          Vector3,
+        },
+        { SVGLoader },
+      ] = await Promise.all([
+        import("three"),
+        import("three/examples/jsm/loaders/SVGLoader.js"),
+      ]);
+
+      this.THREE = {
+        Scene,
+        PerspectiveCamera,
+        WebGLRenderer,
+        AmbientLight,
+        DirectionalLight,
+        Group,
+        MeshStandardMaterial,
+        Box3,
+        Vector3,
+      };
+      this.SVGLoader = SVGLoader;
+
       this.init();
       if (this.scene && this.renderer && this.$refs.container.clientWidth > 0) {
         this.createLogoFromSVG();
@@ -65,6 +94,8 @@ export default {
   },
   methods: {
     init() {
+      if (!this.THREE) return;
+
       const container = this.$refs.container;
       if (
         !container ||
@@ -72,13 +103,13 @@ export default {
         container.clientHeight === 0
       )
         return;
-      const scene = new THREE.Scene();
+      const scene = new this.THREE.Scene();
       this.scene = markRaw(scene);
       const aspect = container.clientWidth / container.clientHeight;
-      const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 5000);
+      const camera = new this.THREE.PerspectiveCamera(45, aspect, 0.1, 5000);
       this.camera = markRaw(camera);
       try {
-        const renderer = new THREE.WebGLRenderer({
+        const renderer = new this.THREE.WebGLRenderer({
           antialias: true,
           alpha: true,
         });
@@ -91,28 +122,34 @@ export default {
         console.error("Error WebGLRenderer:", e);
         return;
       }
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+      const ambientLight = new this.THREE.AmbientLight(0xffffff, 1.2);
       this.scene.add(ambientLight);
-      const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+      const directionalLight1 = new this.THREE.DirectionalLight(0xffffff, 1.0);
       directionalLight1.position.set(20, 30, 20);
       this.scene.add(directionalLight1);
     },
 
-    createLogoFromSVG() {
+    async createLogoFromSVG() {
       if (
         !this.scene ||
         !this.$refs.container ||
-        this.$refs.container.clientWidth === 0
+        this.$refs.container.clientWidth === 0 ||
+        !this.THREE ||
+        !this.SVGLoader
       )
         return;
-      const loader = new SVGLoader();
+
+      // Import ExtrudeGeometry and Mesh dynamically
+      const { ExtrudeGeometry, Mesh, DoubleSide } = await import("three");
+
+      const loader = new this.SVGLoader();
       const data = loader.parse(this.svgMarkup);
-      const group = new THREE.Group();
-      const material = new THREE.MeshStandardMaterial({
+      const group = new this.THREE.Group();
+      const material = new this.THREE.MeshStandardMaterial({
         color: 0xececec,
         metalness: 0.05,
         roughness: 0.8,
-        side: THREE.DoubleSide,
+        side: DoubleSide,
       });
       const extrudeSettings = {
         steps: 1,
@@ -124,23 +161,23 @@ export default {
         bevelSegments: 2,
       };
       data.paths.forEach((path) => {
-        const shapes = SVGLoader.createShapes(path);
+        const shapes = this.SVGLoader.createShapes(path);
         shapes.forEach((shape) => {
-          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-          const mesh = new THREE.Mesh(geometry, material);
+          const geometry = new ExtrudeGeometry(shape, extrudeSettings);
+          const mesh = new Mesh(geometry, material);
           group.add(mesh);
         });
       });
-      const box = new THREE.Box3().setFromObject(group);
-      const center = box.getCenter(new THREE.Vector3());
+      const box = new this.THREE.Box3().setFromObject(group);
+      const center = box.getCenter(new this.THREE.Vector3());
       group.position.sub(center);
       group.rotation.x = Math.PI;
       group.scale.set(10, 10, 10);
       this.logoGroup = markRaw(group);
       this.scene.add(this.logoGroup);
-      const finalBox = new THREE.Box3().setFromObject(this.logoGroup);
-      const finalSize = finalBox.getSize(new THREE.Vector3());
-      const finalCenter = finalBox.getCenter(new THREE.Vector3());
+      const finalBox = new this.THREE.Box3().setFromObject(this.logoGroup);
+      const finalSize = finalBox.getSize(new this.THREE.Vector3());
+      const finalCenter = finalBox.getCenter(new this.THREE.Vector3());
       if (this.camera) {
         const maxDim = Math.max(finalSize.x, finalSize.y);
         const fovInRadians = this.camera.fov * (Math.PI / 180);

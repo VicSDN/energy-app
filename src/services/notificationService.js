@@ -1,4 +1,4 @@
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { initFirebaseApp } from "./firebase";
 
 /**
  * Service to handle Firebase Cloud Messaging (FCM) for notifications
@@ -7,7 +7,7 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 class NotificationService {
   constructor() {
     this.messaging = null;
-    this.vendor = "OneSignal";
+    this.vendor = "Firebase";
     this.initialized = false;
     this.vapidKey =
       "BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU";
@@ -48,7 +48,10 @@ class NotificationService {
         return true;
       }
 
-      this.messaging = getMessaging();
+      // Lazy load Firebase messaging
+      const app = await initFirebaseApp();
+      const { getMessaging } = await import("firebase/messaging");
+      this.messaging = getMessaging(app);
       this.initialized = true;
       return true;
     } catch (error) {
@@ -106,6 +109,7 @@ class NotificationService {
     }
 
     try {
+      const { getToken } = await import("firebase/messaging");
       return await getToken(this.messaging, { vapidKey: this.vapidKey });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -117,18 +121,24 @@ class NotificationService {
   /**
    * Set up foreground message handling with platform-specific optimizations
    */
-  setupForegroundMessages() {
+  async setupForegroundMessages() {
     // No es necesario para iOS ya que usamos notificaciones web estándar
     if (this.isIOS) return;
 
     if (!this.messaging) return;
 
-    onMessage(this.messaging, (payload) => {
-      if (payload.notification) {
-        const { title, body } = payload.notification;
-        this.showLocalNotification(title, body);
-      }
-    });
+    try {
+      const { onMessage } = await import("firebase/messaging");
+      onMessage(this.messaging, (payload) => {
+        if (payload.notification) {
+          const { title, body } = payload.notification;
+          this.showLocalNotification(title, body);
+        }
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Error setting up foreground messages:", error);
+    }
   }
 
   /**

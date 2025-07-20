@@ -88,12 +88,11 @@ export default {
         /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
           userAgent.toLowerCase()
         );
-      // En desktop, saltar todo y ir directo a la app
+
+      // En desktop, considerar como "instalado" pero aún pedir notificaciones
       if (!this.isMobile) {
         this.isInstalled = true;
-        this.notificationsAllowed = true;
-        this.goToApp();
-        return;
+        // No saltarse las notificaciones en desktop, son importantes
       }
     },
 

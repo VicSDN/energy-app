@@ -1,12 +1,4 @@
-// src/firebase.js (o donde lo tengas)
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// Importa otros servicios de Firebase que vayas a necesitar
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
-// import { getFunctions } from "firebase/functions"; // Si usas Cloud Functions
-
+// Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
   authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
@@ -17,10 +9,70 @@ const firebaseConfig = {
   measurementId: process.env.VUE_APP_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+// Lazy initialization
+let firebaseApp = null;
+let analytics = null;
+let db = null;
+let auth = null;
+let storage = null;
 
-export { app, analytics, db, auth, storage };
+// Initialize Firebase app (lightweight)
+const initFirebaseApp = async () => {
+  if (!firebaseApp) {
+    const { initializeApp } = await import("firebase/app");
+    firebaseApp = initializeApp(firebaseConfig);
+  }
+  return firebaseApp;
+};
+
+// Lazy load analytics
+const getAnalyticsInstance = async () => {
+  if (!analytics) {
+    const firebaseApp = await initFirebaseApp();
+    const { getAnalytics } = await import("firebase/analytics");
+    analytics = getAnalytics(firebaseApp);
+  }
+  return analytics;
+};
+
+// Lazy load firestore
+const getFirestoreInstance = async () => {
+  if (!db) {
+    const firebaseApp = await initFirebaseApp();
+    const { getFirestore } = await import("firebase/firestore");
+    db = getFirestore(firebaseApp);
+  }
+  return db;
+};
+
+// Lazy load auth
+const getAuthInstance = async () => {
+  if (!auth) {
+    const firebaseApp = await initFirebaseApp();
+    const { getAuth } = await import("firebase/auth");
+    auth = getAuth(firebaseApp);
+  }
+  return auth;
+};
+
+// Lazy load storage
+const getStorageInstance = async () => {
+  if (!storage) {
+    const firebaseApp = await initFirebaseApp();
+    const { getStorage } = await import("firebase/storage");
+    storage = getStorage(firebaseApp);
+  }
+  return storage;
+};
+
+// Export both direct access for backwards compatibility and lazy loaders
+export {
+  initFirebaseApp,
+  getAnalyticsInstance,
+  getFirestoreInstance,
+  getAuthInstance,
+  getStorageInstance,
+};
+
+// For backwards compatibility, export the app promise
+export const app = initFirebaseApp();

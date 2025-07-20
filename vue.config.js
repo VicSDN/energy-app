@@ -1,7 +1,59 @@
 const { defineConfig } = require("@vue/cli-service");
 module.exports = defineConfig({
   transpileDependencies: true,
-  publicPath: process.env.NODE_ENV === 'production' ? './' : '/',
+  publicPath: process.env.NODE_ENV === "production" ? "./" : "/",
+  // Disable source maps in production to reduce bundle size
+  productionSourceMap: false,
+
+  // Performance optimizations
+  configureWebpack: (config) => {
+    // Code splitting optimization
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: "all",
+        cacheGroups: {
+          firebase: {
+            name: "firebase",
+            test: /[/]node_modules[/](@firebase|firebase)[/]/,
+            chunks: "all",
+            priority: 20,
+          },
+          three: {
+            name: "three",
+            test: /[/]node_modules[/]three[/]/,
+            chunks: "all",
+            priority: 15,
+          },
+          vendor: {
+            name: "chunk-vendors",
+            test: /[/]node_modules[/]/,
+            chunks: "all",
+            priority: 10,
+          },
+        },
+      },
+    };
+
+    // Performance hints for production
+    if (process.env.NODE_ENV === "production") {
+      config.performance = {
+        // Increase limits for lazy-loaded chunks
+        maxAssetSize: 800000, // 800kb - allows for Three.js lazy chunk
+        maxEntrypointSize: 300000, // 300kb - for initial bundle
+        hints: "warning",
+        // Only warn about initial chunks, not lazy-loaded ones
+        assetFilter: function(assetFilename) {
+          // Don't warn about lazy-loaded chunks
+          if (assetFilename.includes('three.') || 
+              assetFilename.includes('firebase.')) {
+            return false;
+          }
+          return true;
+        }
+      };
+    }
+  },
   pwa: {
     name: "Energy Club",
     short_name: "EnergyClub",
