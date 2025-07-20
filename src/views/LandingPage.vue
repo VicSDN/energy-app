@@ -88,26 +88,17 @@
       </div>
       <p v-if="pwaMessage" class="status-message">{{ pwaMessage }}</p>
     </div>
-
-    <!-- Toast de instalación -->
-    <InstallToast
-      :installPromptEvent="installPromptEvent"
-      :isPwaInstalled="isPWAInstalled"
-      @install="promptPWAInstall"
-    />
   </div>
 </template>
 
 <script>
 import ThreeDLogo from "../components/ThreeLogo.vue";
-import InstallToast from "../components/InstallToast.vue";
 import notificationService from "../services/notificationService.js";
 
 export default {
   name: "LandingPage",
   components: {
     ThreeDLogo,
-    InstallToast,
   },
   data() {
     return {

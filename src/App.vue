@@ -1,41 +1,41 @@
 <template>
-  <InitialCheck v-if="showInitialCheck" @check-complete="onCheckComplete" />
-  <router-view v-if="!showInitialCheck" />
+  <SetupWizard v-if="showSetup" @setup-complete="onSetupComplete" />
+  <router-view v-if="!showSetup" />
 </template>
 
 <script>
-import InitialCheck from "./components/InitialCheck.vue";
+import SetupWizard from "./components/SetupWizard.vue";
 
 export default {
   name: "App",
   components: {
-    InitialCheck,
+    SetupWizard,
   },
   data() {
     return {
-      showInitialCheck: true,
+      showSetup: true,
     };
   },
   methods: {
-    onCheckComplete() {
-      this.showInitialCheck = false;
+    onSetupComplete() {
+      this.showSetup = false;
     },
   },
   async mounted() {
-    // Importar servicio de notificaciones
+    // Import notification service
     const notificationService = await import(
       "./services/notificationService.js"
     ).then((m) => m.default);
 
-    // Verificar si ya completó el setup inicial
-    const initialCheckComplete = localStorage.getItem("initialCheckComplete");
+    // Check if setup is already complete
+    const setupComplete = localStorage.getItem("setup-complete");
     const notificationsSetup = notificationService.isSetupComplete();
 
-    if (initialCheckComplete === "true" && notificationsSetup) {
-      this.showInitialCheck = false;
-    } else if (initialCheckComplete === "true" && !notificationsSetup) {
-      // Si la app está configurada pero las notificaciones no, resetear
-      localStorage.removeItem("initialCheckComplete");
+    if (setupComplete === "true" && notificationsSetup) {
+      this.showSetup = false;
+    } else {
+      // Clear any partial setups to ensure clean state
+      localStorage.removeItem("setup-complete");
     }
   },
 };
