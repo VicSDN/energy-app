@@ -7,7 +7,7 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 class NotificationService {
   constructor() {
     this.messaging = null;
-    this.token = null;
+    this.vendor = "OneSignal";
     this.initialized = false;
     this.vapidKey =
       "BJbqZGiIYyyU1MvKmejZFgsAluhSLJE164pHT_mwVzWGzl707SwK_h01W7OUD5R0yLvUxElwtoHNP7wej3-bwQU";

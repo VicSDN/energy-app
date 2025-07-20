@@ -1,390 +1,279 @@
 <template>
-  <div v-if="showPermissions" class="permissions-modal">
-    <div class="permissions-content">
-      <h3>🔔 Activar Funciones Avanzadas</h3>
-      <p>Para disfrutar de la mejor experiencia, activa estas funciones:</p>
-      
-      <div class="permission-item">
-        <div class="permission-icon">🔔</div>
-        <div class="permission-text">
-          <h4>Notificaciones</h4>
-          <p>Recibe alertas sobre eventos y promociones</p>
-        </div>
-        <button 
-          @click="requestNotifications" 
-          :class="['btn', notificationStatus]"
-          :disabled="notificationStatus === 'granted'"
-        >
-          {{ notificationStatus === 'granted' ? '✓ Activado' : 'Activar' }}
-        </button>
-      </div>
+  <div v-if="showWelcome" class="welcome-modal">
+    <div class="welcome-content">
+      <h2>🎉 ¡Bienvenido a Energy Club!</h2>
+      <p>Para la mejor experiencia, necesitamos activar las notificaciones.</p>
 
-      <div class="permission-item">
-        <div class="permission-icon">📍</div>
-        <div class="permission-text">
-          <h4>Ubicación</h4>
-          <p>Encuentra eventos cerca de ti</p>
+      <div class="notification-card">
+        <div class="notification-icon">🔔</div>
+        <div class="notification-text">
+          <h3>Notificaciones</h3>
+          <p>
+            Recibe alertas sobre eventos exclusivos, promociones especiales y
+            novedades del club.
+          </p>
         </div>
-        <button 
-          @click="requestLocation" 
-          :class="['btn', locationStatus]"
-          :disabled="locationStatus === 'granted'"
-        >
-          {{ locationStatus === 'granted' ? '✓ Activado' : 'Activar' }}
-        </button>
-      </div>
-
-      <div class="permission-item">
-        <div class="permission-icon">📱</div>
-        <div class="permission-text">
-          <h4>Instalar App</h4>
-          <p>Accede rápidamente desde tu pantalla de inicio</p>
-        </div>
-        <button 
-          @click="installApp" 
-          :class="['btn', installStatus]"
-          :disabled="!canInstall"
-        >
-          {{ installStatus === 'installed' ? '✓ Instalada' : 'Instalar' }}
-        </button>
       </div>
 
       <div class="actions">
-        <button @click="closeModal" class="btn-secondary">Cerrar</button>
-        <button @click="skipAll" class="btn-primary">Continuar</button>
+        <button @click="skipNotifications" class="btn-skip">Ahora no</button>
+        <button @click="enableNotifications" class="btn-enable">
+          Activar Notificaciones
+        </button>
       </div>
+
+      <p class="small-text">
+        Puedes cambiar esto más tarde en la configuración de tu navegador
+      </p>
     </div>
   </div>
 </template>
 
 <script>
-import { notificationService } from '../services/notifications';
+import notificationService from "../services/notificationService";
 
 export default {
-  name: 'PWAPermissions',
+  name: "PWAPermissions",
   data() {
     return {
-      showPermissions: false,
-      notificationStatus: 'default',
-      locationStatus: 'default',
-      installStatus: 'default',
-      canInstall: false,
-      deferredPrompt: null
+      showWelcome: false,
     };
   },
   mounted() {
-    this.checkInitialStatus();
-    this.setupInstallPrompt();
-    
-    // Solo mostrar si nunca se ha mostrado antes y es necesario
+    // Solo mostrar si nunca se configuró antes
     setTimeout(() => {
-      if (this.shouldShowModal()) {
-        this.showPermissions = true;
+      if (this.shouldShowWelcome()) {
+        this.showWelcome = true;
       }
-    }, 3000);
+    }, 4000); // Esperar 4 segundos para mejor UX
   },
   methods: {
-    checkInitialStatus() {
-      // Verificar estado de notificaciones
-      if (Notification.permission === 'granted') {
-        this.notificationStatus = 'granted';
-      } else if (Notification.permission === 'denied') {
-        this.notificationStatus = 'denied';
-      }
-
-      // Verificar si puede instalar
-      this.canInstall = notificationService.isInstallable();
-
-      // Verificar si ya está instalada (aproximación)
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        this.installStatus = 'installed';
-      }
-    },
-    
-    setupInstallPrompt() {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        this.deferredPrompt = e;
-        this.canInstall = true;
-      });
-    },
-
-    async requestNotifications() {
-      try {
-        const token = await notificationService.requestPermission();
-        if (token) {
-          this.notificationStatus = 'granted';
-          // Limpiar cualquier registro de denegación anterior
-          localStorage.removeItem('notifications-denied-date');
-          // Aquí puedes enviar el token a tu servidor
-          console.log('Token FCM:', token);
-        } else {
-          this.notificationStatus = 'denied';
-          // Guardar cuando se denegaron las notificaciones
-          localStorage.setItem('notifications-denied-date', Date.now().toString());
-        }
-      } catch (error) {
-        console.error('Error al solicitar notificaciones:', error);
-        this.notificationStatus = 'denied';
-        localStorage.setItem('notifications-denied-date', Date.now().toString());
-      }
-    },
-
-    async requestLocation() {
-      try {
-        const position = await notificationService.requestLocationPermission();
-        this.locationStatus = 'granted';
-        console.log('Ubicación obtenida:', position);
-        // Aquí puedes usar la ubicación
-      } catch (error) {
-        console.error('Error al obtener ubicación:', error);
-        this.locationStatus = 'denied';
-      }
-    },
-
-    async installApp() {
-      if (this.deferredPrompt) {
-        try {
-          this.deferredPrompt.prompt();
-          const { outcome } = await this.deferredPrompt.userChoice;
-          if (outcome === 'accepted') {
-            this.installStatus = 'installed';
-          }
-          this.deferredPrompt = null;
-        } catch (error) {
-          console.error('Error al instalar:', error);
-        }
-      }
-    },
-
-    needsPermissions() {
-      return (
-        Notification.permission === 'default' ||
-        (this.canInstall && this.installStatus !== 'installed')
+    shouldShowWelcome() {
+      // No mostrar si ya se configuró antes
+      const alreadyConfigured = localStorage.getItem(
+        "notifications-configured"
       );
-    },
-
-    shouldShowModal() {
-      // No mostrar si ya se mostró antes
-      const alreadyShown = localStorage.getItem('pwa-permissions-shown');
-      if (alreadyShown === 'true') {
+      if (alreadyConfigured) {
         return false;
       }
 
-      // No mostrar si ya está todo configurado
-      const notificationsConfigured = Notification.permission !== 'default';
-      const appInstalled = window.matchMedia('(display-mode: standalone)').matches;
-      
-      if (notificationsConfigured && (appInstalled || !this.canInstall)) {
-        // Si ya está todo configurado, marcar como mostrado
-        localStorage.setItem('pwa-permissions-shown', 'true');
+      // No mostrar si ya están activadas las notificaciones
+      if (Notification.permission === "granted") {
+        localStorage.setItem("notifications-configured", "true");
         return false;
       }
 
-      // No mostrar si el usuario rechazó las notificaciones
-      if (Notification.permission === 'denied') {
-        const deniedDate = localStorage.getItem('notifications-denied-date');
-        const now = Date.now();
-        
-        // Solo volver a preguntar después de 7 días
-        if (deniedDate && (now - parseInt(deniedDate)) < (7 * 24 * 60 * 60 * 1000)) {
-          return false;
+      // No mostrar si ya fueron rechazadas recientemente
+      if (Notification.permission === "denied") {
+        const deniedDate = localStorage.getItem("notifications-denied-date");
+        if (deniedDate) {
+          const daysSinceDenied =
+            (Date.now() - parseInt(deniedDate)) / (1000 * 60 * 60 * 24);
+          if (daysSinceDenied < 30) {
+            // No preguntar por 30 días
+            return false;
+          }
         }
       }
 
-      return this.needsPermissions();
+      return true;
     },
 
-    closeModal() {
-      this.showPermissions = false;
+    async enableNotifications() {
+      try {
+        const result = await notificationService.requestPermission();
+        if (result.success) {
+          localStorage.setItem("notifications-configured", "true");
+          localStorage.removeItem("notifications-denied-date");
+          this.showWelcome = false;
+          // Configurar listener de mensajes
+          notificationService.setupForegroundMessages();
+        } else {
+          this.skipNotifications();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Error al configurar notificaciones:", error);
+        this.skipNotifications();
+      }
     },
 
-    skipAll() {
-      this.showPermissions = false;
-      // Guardar en localStorage que el usuario ya vio este modal
-      localStorage.setItem('pwa-permissions-shown', 'true');
-    }
-  }
+    skipNotifications() {
+      localStorage.setItem("notifications-configured", "true");
+      if (Notification.permission === "denied") {
+        localStorage.setItem(
+          "notifications-denied-date",
+          Date.now().toString()
+        );
+      }
+      this.showWelcome = false;
+    },
+  },
 };
 </script>
 
 <style scoped>
-.permissions-modal {
+.welcome-modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10000;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.5s ease-out;
 }
 
-.permissions-content {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  border-radius: 20px;
-  padding: 30px;
-  max-width: 500px;
+.welcome-content {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d1b69 50%, #1a1a1a 100%);
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 480px;
   width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  border: 1px solid #8b5cf6;
-  box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
-}
-
-.permissions-content h3 {
-  color: #8b5cf6;
+  border: 2px solid #8b5cf6;
+  box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
   text-align: center;
-  margin-bottom: 10px;
-  font-size: 1.5rem;
 }
 
-.permissions-content p {
+.welcome-content h2 {
+  color: #fff;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.welcome-content > p {
   color: #ccc;
-  text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  line-height: 1.5;
 }
 
-.permission-item {
+.notification-card {
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 16px;
+  padding: 25px;
+  margin: 25px 0;
+  border: 1px solid rgba(139, 92, 246, 0.3);
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: rgba(139, 92, 246, 0.1);
-  border-radius: 12px;
-  border: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-.permission-icon {
-  font-size: 2rem;
-  margin-right: 15px;
-  min-width: 50px;
-}
-
-.permission-text {
-  flex: 1;
-  margin-right: 15px;
-}
-
-.permission-text h4 {
-  color: #fff;
-  margin: 0 0 5px 0;
-  font-size: 1.1rem;
-}
-
-.permission-text p {
-  color: #aaa;
-  margin: 0;
-  font-size: 0.9rem;
   text-align: left;
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 80px;
+.notification-icon {
+  font-size: 3rem;
+  margin-right: 20px;
+  min-width: 60px;
 }
 
-.btn.default {
-  background: #8b5cf6;
-  color: white;
+.notification-text h3 {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
 }
 
-.btn.default:hover {
-  background: #7c3aed;
-  transform: translateY(-2px);
-}
-
-.btn.granted {
-  background: #10b981;
-  color: white;
-}
-
-.btn.denied {
-  background: #ef4444;
-  color: white;
-}
-
-.btn.installed {
-  background: #10b981;
-  color: white;
-}
-
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+.notification-text p {
+  color: #bbb;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 
 .actions {
   display: flex;
-  justify-content: space-between;
+  gap: 15px;
   margin-top: 30px;
-  gap: 10px;
 }
 
-.btn-secondary {
-  padding: 12px 24px;
+.btn-skip {
+  flex: 1;
+  padding: 14px 20px;
   background: transparent;
   color: #8b5cf6;
   border: 2px solid #8b5cf6;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 1rem;
   transition: all 0.3s ease;
 }
 
-.btn-secondary:hover {
-  background: #8b5cf6;
-  color: white;
+.btn-skip:hover {
+  background: rgba(139, 92, 246, 0.1);
+  transform: translateY(-2px);
 }
 
-.btn-primary {
-  padding: 12px 24px;
-  background: #8b5cf6;
+.btn-enable {
+  flex: 2;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 1rem;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
 }
 
-.btn-primary:hover {
-  background: #7c3aed;
+.btn-enable:hover {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+}
+
+.small-text {
+  color: #888;
+  font-size: 0.85rem;
+  margin-top: 20px;
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Responsive */
 @media (max-width: 600px) {
-  .permissions-content {
-    padding: 20px;
+  .welcome-content {
+    padding: 30px 25px;
     margin: 20px;
   }
-  
-  .permission-item {
+
+  .welcome-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .notification-card {
     flex-direction: column;
     text-align: center;
+    padding: 20px;
   }
-  
-  .permission-icon {
-    margin-right: 0;
-    margin-bottom: 10px;
-  }
-  
-  .permission-text {
+
+  .notification-icon {
     margin-right: 0;
     margin-bottom: 15px;
   }
-  
+
   .actions {
     flex-direction: column;
+  }
+
+  .btn-skip,
+  .btn-enable {
+    flex: none;
   }
 }
 </style>

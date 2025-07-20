@@ -13,11 +13,12 @@
       </div>
 
       <div class="actions">
+        <!-- Paso 1: Instalación (OBLIGATORIO) -->
         <button
           type="button"
-          v-if="!isPWAInstalled && installPromptEvent"
+          v-if="shouldShowInstallButton"
           @click="promptPWAInstall"
-          class="btn btn-primary btn-install"
+          class="btn btn-primary btn-install pulse-animation"
           aria-label="Anclar aplicación al inicio"
         >
           <svg
@@ -31,13 +32,15 @@
               d="M12 15.0006L7.75732 10.758L9.17154 9.34375L11 11.1722V4H13V11.1722L14.8284 9.34375L16.2426 10.758L12 15.0006ZM18.364 17.3645C17.6536 18.0749 16.8048 18.6384 15.8647 19.0125C14.9246 19.3866 13.9114 19.5634 12.8647 19.5271C10.2913 19.4283 8.00696 18.0267 6.56686 15.7537C5.12676 13.4807 5.06019 10.7047 6.38671 8.35824C7.71322 6.01179 10.0577 4.57176 12.6311 4.57176C13.6195 4.57176 14.581 4.75053 15.4627 5.09337C16.3445 5.43621 17.1294 5.93451 17.7782 6.55901L19.1924 5.1448C18.2215 4.17385 17.0628 3.41196 15.7904 2.92398C14.5181 2.436 13.1609 2.23596 11.8056 2.34009C8.35417 2.62937 5.38575 4.70775 3.70095 7.80503C2.01614 10.9023 2.0463 14.5711 3.79155 17.6366C5.5368 20.7022 8.58077 22.6953 12.1353 22.9271C12.4819 22.9502 12.8291 22.9618 13.1768 22.9618C14.9142 22.9618 16.5801 22.4247 18.0076 21.4328L19.4218 22.847L18.364 17.3645Z"
             ></path>
           </svg>
-          Anclar al Inicio
+          📱 Instalar Energy Club
         </button>
+
+        <!-- Paso 2: Notificaciones (OBLIGATORIO después de instalar) -->
         <button
           type="button"
           v-if="shouldShowNotifyButton"
           @click="enableNotifications"
-          class="btn btn-secondary btn-notify"
+          class="btn btn-secondary btn-notify pulse-animation"
           aria-label="Activar notificaciones"
         >
           <svg
@@ -51,17 +54,37 @@
               d="M18 16.5V11.5C18 7.47715 16.0697 4.16333 12.75 3.25995V3C12.75 2.30964 12.1904 1.75 11.5 1.75C10.8096 1.75 10.25 2.30964 10.25 3V3.25995C6.93025 4.16333 5 7.47715 5 11.5V16.5L3 18.5V19.5H20V18.5L18 16.5ZM19.5 9.5C19.5 10.0523 19.0523 10.5 18.5 10.5C17.9477 10.5 17.5 10.0523 17.5 9.5C17.5 8.94772 17.9477 8.5 18.5 8.5C19.0523 8.5 19.5 8.94772 19.5 9.5ZM21.5 12.5C21.5 13.0523 21.0523 13.5 20.5 13.5C19.9477 13.5 19.5 13.0523 19.5 12.5C19.5 11.9477 19.9477 11.5 20.5 11.5C21.0523 11.5 21.5 11.9477 21.5 12.5ZM11.5 21.5C12.6046 21.5 13.5 20.6046 13.5 19.5H9.5C9.5 20.6046 10.3954 21.5 11.5 21.5Z"
             ></path>
           </svg>
-          Activar Notificaciones
+          🔔 Activar Notificaciones
         </button>
+
+        <!-- Paso 3: Entrar a la app (Solo disponible cuando está todo listo) -->
         <button
           type="button"
-          v-if="isPWAInstalled"
+          v-if="shouldShowEnterButton"
           @click="goToApp"
-          class="btn btn-primary btn-enter"
+          class="btn btn-primary btn-enter success-glow"
           aria-label="Entrar a la aplicación"
         >
-          Entrar a la App
+          ✨ Entrar a Energy Club ✨
         </button>
+      </div>
+
+      <!-- Mensaje de bloqueo -->
+      <div v-if="!canAccessApp" class="requirement-message">
+        <h3>🔒 Acceso Restringido</h3>
+        <p>Para acceder a Energy Club necesitas:</p>
+        <div class="requirements-list">
+          <div class="requirement" :class="{ completed: isPWAInstalled }">
+            <span class="req-icon">{{ isPWAInstalled ? "✓" : "📱" }}</span>
+            Instalar la aplicación
+          </div>
+          <div class="requirement" :class="{ completed: notificationsEnabled }">
+            <span class="req-icon">{{
+              notificationsEnabled ? "✓" : "🔔"
+            }}</span>
+            Activar las notificaciones
+          </div>
+        </div>
       </div>
       <p v-if="pwaMessage" class="status-message">{{ pwaMessage }}</p>
     </div>
@@ -95,14 +118,21 @@ export default {
     };
   },
   computed: {
+    shouldShowInstallButton() {
+      // Mostrar siempre el botón de instalación si no está instalada
+      return !this.isPWAInstalled;
+    },
     shouldShowNotifyButton() {
-      if (this.installPromptEvent && this.notificationsEnabled) {
-        return false;
-      }
-      return (
-        (this.installPromptEvent && !this.notificationsEnabled) ||
-        (this.isPWAInstalled && !this.notificationsEnabled)
-      );
+      // Mostrar botón de notificaciones solo si la app ya está instalada
+      return this.isPWAInstalled && !this.notificationsEnabled;
+    },
+    shouldShowEnterButton() {
+      // Solo mostrar botón de entrar si está instalada Y tiene notificaciones
+      return this.isPWAInstalled && this.notificationsEnabled;
+    },
+    canAccessApp() {
+      // Solo puede acceder si está instalada Y tiene notificaciones activadas
+      return this.isPWAInstalled && this.notificationsEnabled;
     },
   },
   methods: {
@@ -151,8 +181,22 @@ export default {
     // Métodos de acción
     async promptPWAInstall() {
       if (!this.installPromptEvent) {
-        this.pwaMessage =
-          "La instalación no está disponible en este momento. Asegúrate de usar un navegador compatible.";
+        // Fallback para navegadores sin beforeinstallprompt o Safari
+        this.pwaMessage = "Para instalar en tu dispositivo:";
+
+        if (
+          navigator.userAgent.includes("iPhone") ||
+          navigator.userAgent.includes("iPad")
+        ) {
+          this.pwaMessage +=
+            " Toca el icono 'Compartir' y selecciona 'Añadir a pantalla de inicio'";
+        } else if (navigator.userAgent.includes("Android")) {
+          this.pwaMessage +=
+            " Ve al menú del navegador y selecciona 'Añadir a pantalla de inicio' o 'Instalar app'";
+        } else {
+          this.pwaMessage +=
+            " Busca la opción 'Instalar' en el menú de tu navegador o en la barra de direcciones";
+        }
         return;
       }
 
@@ -163,15 +207,22 @@ export default {
 
         this.pwaMessage =
           outcome === "accepted"
-            ? "Instalando app..."
+            ? "¡Instalando app! Espera un momento..."
             : "Instalación cancelada. Puedes intentarlo más tarde.";
+
+        if (outcome === "accepted") {
+          // Forzar actualización del estado después de un delay
+          setTimeout(() => {
+            this.checkPWAStatus();
+          }, 1000);
+        }
 
         this.installPromptEvent = null;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("Error durante la instalación:", error);
         this.pwaMessage =
-          "Hubo un problema durante la instalación. Por favor, inténtalo de nuevo.";
+          "Hubo un problema durante la instalación. Intenta usar el menú de tu navegador.";
       }
     },
     async enableNotifications() {
@@ -387,6 +438,128 @@ export default {
   }
 }
 
+/* Animaciones para llamar la atención */
+.pulse-animation {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 6px 20px rgba(128, 90, 213, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(128, 90, 213, 0.6);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 6px 20px rgba(128, 90, 213, 0.3);
+    transform: scale(1);
+  }
+}
+
+.success-glow {
+  animation: success-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes success-pulse {
+  0% {
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(34, 197, 94, 0.7);
+  }
+  100% {
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  }
+}
+
+/* Mensaje de requisitos */
+.requirement-message {
+  background: rgba(220, 38, 38, 0.1);
+  border: 2px solid rgba(220, 38, 38, 0.3);
+  border-radius: 16px;
+  padding: 25px;
+  margin-top: 30px;
+  max-width: 400px;
+  backdrop-filter: blur(10px);
+}
+
+.requirement-message h3 {
+  color: #fca5a5;
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+}
+
+.requirement-message p {
+  color: #f3f4f6;
+  margin-bottom: 20px;
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  transition: all 0.3s ease;
+}
+
+.requirement.completed {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.req-icon {
+  font-size: 1.2rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.requirement.completed .req-icon {
+  color: #22c55e;
+}
+
+/* Botones mejorados */
+.btn-install {
+  background: linear-gradient(145deg, #dc2626, #991b1b) !important;
+  border: 2px solid #dc2626;
+}
+
+.btn-install:hover {
+  background: linear-gradient(145deg, #b91c1c, #7f1d1d) !important;
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-notify {
+  background: linear-gradient(145deg, #f59e0b, #d97706) !important;
+  color: white !important;
+  border: 2px solid #f59e0b;
+}
+
+.btn-notify:hover {
+  background: linear-gradient(145deg, #d97706, #b45309) !important;
+  border-color: #f59e0b;
+}
+
+.btn-enter {
+  background: linear-gradient(145deg, #22c55e, #16a34a) !important;
+  border: 2px solid #22c55e;
+}
+
+.btn-enter:hover {
+  background: linear-gradient(145deg, #16a34a, #15803d) !important;
+}
+
 @media (max-width: 767px) {
   .cta-section {
     padding-top: 30vh;
@@ -395,6 +568,19 @@ export default {
   .btn {
     width: 100%;
     max-width: 300px;
+  }
+
+  .requirement-message {
+    margin: 20px;
+    padding: 20px;
+  }
+
+  .requirements-list {
+    gap: 10px;
+  }
+
+  .requirement {
+    padding: 10px;
   }
 }
 </style>

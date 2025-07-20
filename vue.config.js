@@ -2,16 +2,19 @@ const { defineConfig } = require("@vue/cli-service");
 module.exports = defineConfig({
   transpileDependencies: true,
   pwa: {
-    name: "Energy Disco",
-    short_name: "Energy",
-    description: "La mejor discoteca de Cangas Del Narcea con eventos exclusivos",
+    name: "Energy Club",
+    short_name: "EnergyClub",
+    description:
+      "La mejor discoteca de Cangas Del Narcea con eventos exclusivos y la mejor música",
     start_url: "/",
     display: "standalone",
-    orientation: "portrait-primary",
+    orientation: "any",
     background_color: "#0d0d0d",
     theme_color: "#8b5cf6",
-    appleMobileWebAppCapable: 'yes',
-    appleMobileWebAppStatusBarStyle: 'black',
+    appleMobileWebAppCapable: "yes",
+    appleMobileWebAppStatusBarStyle: "black-translucent",
+    categories: ["entertainment", "music", "lifestyle"],
+    lang: "es",
     // Use default GenerateSW mode instead of InjectManifest
     workboxPluginMode: "GenerateSW",
     workboxOptions: {
@@ -42,6 +45,23 @@ module.exports = defineConfig({
       ],
     },
     manifestOptions: {
+      scope: "/",
+      start_url: "/",
+      display: "standalone",
+      orientation: "any",
+      background_color: "#0d0d0d",
+      theme_color: "#8b5cf6",
+      lang: "es",
+      categories: ["entertainment", "music", "lifestyle"],
+      shortcuts: [
+        {
+          name: "Eventos",
+          short_name: "Eventos",
+          description: "Ver próximos eventos",
+          url: "/home",
+          icons: [{ src: "/img/icons/icon-96x96.png", sizes: "96x96" }],
+        },
+      ],
       icons: [
         {
           src: "/img/icons/app-icon.svg",
@@ -103,6 +123,6 @@ module.exports = defineConfig({
   devServer: {
     https: true, // Habilitado para desarrollo PWA
     port: 8080,
-    host: '0.0.0.0', // Permite acceso desde otros dispositivos en la red
+    host: "0.0.0.0", // Permite acceso desde otros dispositivos en la red
   },
 });

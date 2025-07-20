@@ -39,14 +39,16 @@ export default {
       this.hasRequested = true;
       localStorage.setItem("notificationRequested", "true");
 
-      const result = await requestNotificationPermission();
-      if (result.success) {
-        console.log("Permisos de notificación concedidos");
+      if ("Notification" in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          await requestNotificationPermission();
+          console.log("Permisos de notificación concedidos");
+        } else {
+          console.log("Permisos de notificación denegados");
+        }
       } else {
-        console.log(
-          "Permisos de notificación denegados o error:",
-          result.error
-        );
+        console.error("Las notificaciones no son soportadas en este navegador");
       }
     },
     dismissPrompt() {
